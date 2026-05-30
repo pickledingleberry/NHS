@@ -4,7 +4,7 @@ from typing import Any
 
 import requests
 
-from config import SupplierCredentials
+from config import OReillyCConfig, SupplierCredentials
 from suppliers.models import PartResult, SupplierSearchResult
 
 BASE = "https://www.oreillypro.com"
@@ -87,12 +87,23 @@ def _login(session: requests.Session, creds: SupplierCredentials) -> str | None:
 
 
 def _get_shop_id(session: requests.Session, token: str) -> int:
-    r = session.get(SESSION_URL, headers=_headers(token), timeout=20)
-    if r.status_code != 200 or "application/json" not in r.headers.get("Content-Type", ""):
+    try:
+        r = session.get(SESSION_URL, headers=_headers(token), timeout=20)
+        if r.status_code != 200 or "application/json" not in r.headers.get("Content-Type", ""):
+            return 0
+        data = r.json()
+        shop = data.get("currentShop") or data.get("shop") or data.get("shopInfo") or {}
+        val = (
+            shop.get("id")
+            or shop.get("shopId")
+            or shop.get("storeNumber")
+            or data.get("shopId")
+            or data.get("shopNumber")
+            or 0
+        )
+        return int(val) if val else 0
+    except Exception:
         return 0
-    data = r.json()
-    shop = data.get("currentShop") or {}
-    return int(shop.get("id") or shop.get("shopId") or shop.get("storeNumber") or 0)
 
 
 def _lookup_vehicle(session: requests.Session, token: str, vin: str) -> dict:
@@ -244,7 +255,13 @@ def search_oreilly(
         if not token:
             return SupplierSearchResult(store=store, error="O'Reilly login succeeded but no token returned")
 
-        shop_id = _get_shop_id(session, token)
+        # Prefer shop_id from .env (most reliable), fall back to session lookup
+        or_cfg = creds if isinstance(creds, OReillyCConfig) else None
+        if or_cfg and or_cfg.shop_id:
+            shop_id = int(or_cfg.shop_id)
+        else:
+            shop_id = _get_shop_id(session, token)
+
         vehicle = _lookup_vehicle(session, token, vin)
 
         # Get part type IDs: try hardcoded mapping first, then API

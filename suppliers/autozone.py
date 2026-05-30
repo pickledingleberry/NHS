@@ -2,7 +2,7 @@ import json
 import re
 import urllib.parse
 
-from config import SupplierCredentials
+from config import AutoZoneConfig, SupplierCredentials
 from suppliers.browser_utils import (
     browser_page,
     dismiss_overlays,
@@ -65,21 +65,35 @@ def _az_two_step_login(page, user: str, password: str) -> bool:
 
 
 def _get_session(page) -> dict:
-    """Extract storeId, customerId, and other session data from the logged-in page."""
+    """Extract storeId and customerId from the logged-in page using multiple strategies."""
     data = page.evaluate("""
         () => {
-            // Try Next.js page data
+            const results = {storeId: "", customerId: ""};
+
+            // Strategy 1: Next.js __NEXT_DATA__
             const nd = window.__NEXT_DATA__;
             if (nd) {
-                const pp = nd.props?.pageProps || {};
-                const user = pp.user || pp.account || pp.session || {};
-                return {
-                    storeId: String(pp.storeId || user.storeId || pp.primaryStoreId || ""),
-                    customerId: String(pp.customerId || user.customerId || user.id || ""),
-                    raw: JSON.stringify(Object.keys(nd.props?.pageProps || {}))
-                };
+                const str = JSON.stringify(nd.props || {});
+                const cm = str.match(/"customerId":"?(\\d{4,})"?/);
+                const sm = str.match(/"(?:storeId|primaryStoreId|homeStoreId)":"?(\\d{3,})"?/);
+                if (cm) results.customerId = cm[1];
+                if (sm) results.storeId = sm[1];
             }
-            return {storeId: "", customerId: ""};
+
+            // Strategy 2: Scan all script tags for embedded JSON
+            if (!results.customerId || !results.storeId) {
+                document.querySelectorAll("script").forEach(s => {
+                    const text = s.textContent || "";
+                    if (text.includes("customerId") || text.includes("storeId")) {
+                        const cm2 = text.match(/"customerId":"?(\\d{4,})"?/);
+                        const sm2 = text.match(/"(?:storeId|primaryStoreId)":"?(\\d{3,})"?/);
+                        if (cm2 && !results.customerId) results.customerId = cm2[1];
+                        if (sm2 && !results.storeId) results.storeId = sm2[1];
+                    }
+                });
+            }
+
+            return results;
         }
     """)
     return data or {}
@@ -267,6 +281,30 @@ def search_autozone(
                 return SupplierSearchResult(store=store, error="AutoZone login failed — check AZ_USER / AZ_PASS")
 
             session = _get_session(page)
+
+            # Prefer hardcoded values from .env over auto-detected ones
+            az_cfg = creds if isinstance(creds, AutoZoneConfig) else None
+            if az_cfg and az_cfg.store_id:
+                session["storeId"] = az_cfg.store_id
+            if az_cfg and az_cfg.customer_id:
+                session["customerId"] = az_cfg.customer_id
+
+            # If still missing, try fetching from account endpoint
+            if not session.get("customerId") or not session.get("storeId"):
+                try:
+                    account_data = page.evaluate("""
+                        async () => {
+                            try {
+                                const r = await fetch('/sls/commercial-catalog/catalog/lookup/v2/products/frequently-ordered',
+                                    {credentials: 'include'});
+                                return await r.json();
+                            } catch(e) { return {}; }
+                        }
+                    """)
+                    if account_data and account_data.get("customerId"):
+                        session["customerId"] = str(account_data["customerId"])
+                except Exception:
+                    pass
 
             vehicle: dict = {}
             if vin and len(vin) == 17:

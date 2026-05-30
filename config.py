@@ -1,11 +1,15 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 PLACEHOLDER = "username_here"
+
+
+def _env(key: str) -> str:
+    return os.getenv(key, "").strip().strip('"')
 
 
 @dataclass
@@ -24,10 +28,21 @@ class SupplierCredentials:
 
 
 @dataclass
+class AutoZoneConfig(SupplierCredentials):
+    store_id: str = ""
+    customer_id: str = ""
+
+
+@dataclass
+class OReillyCConfig(SupplierCredentials):
+    shop_id: str = ""
+
+
+@dataclass
 class AppConfig:
-    autozone: SupplierCredentials
+    autozone: AutoZoneConfig
     fmp: SupplierCredentials
-    oreilly: SupplierCredentials
+    oreilly: OReillyCConfig
 
     @property
     def any_configured(self) -> bool:
@@ -53,16 +68,19 @@ class AppConfig:
 
 def get_config() -> AppConfig:
     return AppConfig(
-        autozone=SupplierCredentials(
-            user=os.getenv("AZ_USER", "").strip().strip('"'),
-            password=os.getenv("AZ_PASS", "").strip().strip('"'),
+        autozone=AutoZoneConfig(
+            user=_env("AZ_USER"),
+            password=_env("AZ_PASS"),
+            store_id=_env("AZ_STORE_ID"),
+            customer_id=_env("AZ_CUSTOMER_ID"),
         ),
         fmp=SupplierCredentials(
-            user=os.getenv("FMP_USER", "").strip().strip('"'),
-            password=os.getenv("FMP_PASS", "").strip().strip('"'),
+            user=_env("FMP_USER"),
+            password=_env("FMP_PASS"),
         ),
-        oreilly=SupplierCredentials(
-            user=os.getenv("OR_USER", "").strip().strip('"'),
-            password=os.getenv("OR_PASS", "").strip().strip('"'),
+        oreilly=OReillyCConfig(
+            user=_env("OR_USER"),
+            password=_env("OR_PASS"),
+            shop_id=_env("OR_SHOP_ID"),
         ),
     )
