@@ -1,10 +1,13 @@
 from config import SupplierCredentials
 from suppliers.browser_utils import (
     browser_page,
-    click_first,
+    dismiss_overlays,
     extract_price,
     fill_first,
+    safe_goto,
+    submit_login,
     unique_parts,
+    wait_for_any,
 )
 from suppliers.models import PartResult, SupplierSearchResult
 
@@ -20,8 +23,19 @@ def search_fmp(
 
     try:
         with browser_page() as page:
-            page.goto("https://fmp-delivers.dstcloud.com/#/login", wait_until="domcontentloaded")
-            page.wait_for_timeout(3000)
+            safe_goto(page, "https://fmp-delivers.dstcloud.com/#/login")
+            page.wait_for_timeout(4000)
+            dismiss_overlays(page)
+
+            if not wait_for_any(
+                page,
+                [
+                    'input[formcontrolname="userID"]',
+                    'input[name="userID"]',
+                    'input[type="password"]',
+                ],
+            ):
+                return SupplierSearchResult(store=store, error="FMP login page did not load correctly")
 
             if not fill_first(
                 page,
@@ -46,19 +60,21 @@ def search_fmp(
             ):
                 return SupplierSearchResult(store=store, error="Could not find FMP password field")
 
-            click_first(
+            dismiss_overlays(page)
+            submit_login(
                 page,
                 [
+                    'button[type="submit"]',
                     'button:has-text("Login")',
                     'button:has-text("Sign In")',
-                    'button[type="submit"]',
                 ],
             )
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(7000)
 
             if "login" in page.url.lower():
                 return SupplierSearchResult(store=store, error="FMP login failed — check FMP_USER / FMP_PASS")
 
+            dismiss_overlays(page)
             search_selectors = [
                 'input[placeholder*="Search"]',
                 'input[aria-label*="Search"]',
@@ -69,7 +85,7 @@ def search_fmp(
                 return SupplierSearchResult(store=store, error="Could not find FMP search box")
 
             page.keyboard.press("Enter")
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(6000)
 
             rows = page.locator("tr, [class*='result'], [class*='part'], li, article")
             parsed: list[dict] = []
