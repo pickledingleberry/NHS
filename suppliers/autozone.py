@@ -313,7 +313,6 @@ def search_autozone(
             part_group_ids = _search_part_groups(page, query, session)
 
             if not part_group_ids:
-                # Fallback: try common part group IDs for generic queries
                 part_group_ids = _fallback_part_groups(query)
 
             all_parts: list[dict] = []
@@ -324,9 +323,14 @@ def search_autozone(
                     break
 
             if not all_parts:
+                sid = session.get("storeId", "none")
+                cid = session.get("customerId", "none")
                 return SupplierSearchResult(
                     store=store,
-                    error="AutoZone logged in but no priced results found — try a specific part number",
+                    error=(
+                        f"AutoZone: no prices returned (storeId={sid}, customerId={cid}). "
+                        "Add AZ_STORE_ID and AZ_CUSTOMER_ID to your .env file."
+                    ),
                 )
 
             # Sort by price, dedupe
