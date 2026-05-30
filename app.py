@@ -63,6 +63,13 @@ TEXT = {
         "total": "TOTAL ESTIMADO",
         "square_btn": "Cobrar con Square",
         "square_total": "Total para la terminal:",
+        "tax_lbl": "Impuesto (%)",
+        "discount_lbl": "Descuento",
+        "discount_type_pct": "Porcentaje (%)",
+        "discount_type_fixed": "Monto fijo ($)",
+        "subtotal": "Subtotal",
+        "tax_line": "Impuesto",
+        "discount_line": "Descuento",
         "help_title": "Cómo Usar — Muy Fácil",
         "help_steps": [
             ("1.", "Entre el VIN de 17 dígitos del carro del cliente."),
@@ -120,6 +127,13 @@ TEXT = {
         "total": "ESTIMATED TOTAL",
         "square_btn": "Charge with Square",
         "square_total": "Terminal total:",
+        "tax_lbl": "Tax (%)",
+        "discount_lbl": "Discount",
+        "discount_type_pct": "Percentage (%)",
+        "discount_type_fixed": "Fixed amount ($)",
+        "subtotal": "Subtotal",
+        "tax_line": "Tax",
+        "discount_line": "Discount",
         "help_title": "How to Use — Very Easy",
         "help_steps": [
             ("1.", "Enter the customer's 17-digit VIN."),
@@ -441,9 +455,12 @@ def render_quote():
     col_a, col_b = st.columns(2)
     with col_a:
         show_cheapest = st.toggle(T["toggle_cheap"], value=False)
-    with col_b:
         labor_hours = st.number_input(T["labor_lbl"], min_value=0.0, max_value=20.0, value=1.0, step=0.5)
         st.caption(T["labor_hint"])
+    with col_b:
+        tax_rate = st.number_input(T["tax_lbl"], min_value=0.0, max_value=25.0, value=0.0, step=0.25, format="%.2f")
+        discount_type = st.radio(T["discount_lbl"], [T["discount_type_pct"], T["discount_type_fixed"]], horizontal=True)
+        discount_val = st.number_input("", min_value=0.0, max_value=10000.0, value=0.0, step=1.0, label_visibility="collapsed")
 
     st.write("")
     if st.button(T["btn_search"], type="primary", use_container_width=True):
@@ -475,44 +492,57 @@ def render_quote():
                     for item in display_items:
                         is_best = item.price == scraped_data[0].price
                         border_color = "#059669" if is_best else "#2563eb"
+
                         badge_html = ""
                         if item.fits_vehicle:
-                            badge_html = '<span style="background:#16a34a;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:6px;">Fits Vehicle</span>'
+                            badge_html += '<span style="background:#16a34a;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:6px;">Fits Vehicle</span>'
                         if is_best and not show_cheapest:
                             badge_html += '<span style="background:#f59e0b;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">Mejor precio</span>'
 
-                        pos_html = f'<span style="background:#e5e7eb;color:#374151;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:4px;">{item.position}</span>' if item.position else ""
+                        pos_html = ""
+                        for pos in (item.position or "").split("/"):
+                            pos = pos.strip()
+                            if pos:
+                                pos_color = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}.get(pos, "#6b7280")
+                                pos_html += f'<span style="background:{pos_color};color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:4px;">{pos}</span>'
 
                         attrs_html = ""
                         for k, v in (item.attributes or {}).items():
-                            attrs_html += f'<span style="color:#6b7280;font-size:0.85em;">{k}: <strong>{v}</strong> &nbsp; </span>'
+                            attrs_html += f'<span style="color:#6b7280;font-size:0.82em;margin-right:12px;">{k}: <strong style="color:#374151;">{v}</strong></span>'
 
-                        list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.9em;margin-left:8px;">Lista: ${item.list_price:.2f}</span>' if item.list_price > item.price else ""
+                        list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.88em;margin-left:8px;">Lista: ${item.list_price:.2f}</span>' if item.list_price > item.price else ""
 
                         avail_html = ""
                         if item.store_qty > 0:
-                            avail_html = f'<span style="color:#16a34a;font-size:0.85em;font-weight:600;">{item.store_qty} En tienda</span>'
+                            avail_html += f'<span style="color:#16a34a;font-size:0.85em;font-weight:600;">{item.store_qty} en tienda &nbsp;</span>'
                         if item.total_qty > 0:
-                            avail_html += f'<span style="color:#6b7280;font-size:0.85em;margin-left:8px;">{item.total_qty} total disponible</span>'
+                            avail_html += f'<span style="color:#6b7280;font-size:0.85em;">{item.total_qty} total</span>'
 
-                        part_num_html = f'<span style="color:#6b7280;font-size:0.85em;">Part #: <strong>{item.part_number}</strong></span>' if item.part_number else ""
+                        part_num_html = f'<span style="color:#6b7280;font-size:0.82em;">Part #: <strong>{item.part_number}</strong></span>' if item.part_number else ""
+
+                        img_html = f'<img src="{item.image_url}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;margin-right:14px;flex-shrink:0;" onerror="this.style.display=\'none\'"/>' if item.image_url else '<div style="width:80px;height:80px;background:#f3f4f6;border-radius:6px;margin-right:14px;flex-shrink:0;"></div>'
 
                         st.markdown(
                             f"""
-                            <div style="border-left:4px solid {border_color};border-radius:12px;background:white;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-                                <div style="margin-bottom:6px;">{badge_html}{pos_html}</div>
-                                <div style="font-size:1.15em;font-weight:700;color:#111827;margin-bottom:2px;">{item.brand} {item.description}</div>
-                                <div style="margin-bottom:8px;">{part_num_html}</div>
-                                <div style="margin-bottom:8px;">{attrs_html}</div>
-                                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-                                    <div>
-                                        <span style="font-size:1.6em;font-weight:800;color:{border_color};">${item.price:.2f}</span>
-                                        {list_html}
-                                    </div>
-                                    <div style="text-align:right;">
-                                        <div style="font-weight:600;color:#374151;">{item.store}</div>
-                                        <div>{avail_html}</div>
-                                        <div style="color:#6b7280;font-size:0.85em;">{item.eta}</div>
+                            <div style="border-left:4px solid {border_color};border-radius:12px;background:white;padding:14px 18px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                                <div style="display:flex;align-items:flex-start;gap:4px;">
+                                    {img_html}
+                                    <div style="flex:1;min-width:0;">
+                                        <div style="margin-bottom:5px;">{badge_html}{pos_html}</div>
+                                        <div style="font-size:1.05em;font-weight:700;color:#111827;margin-bottom:2px;">{item.brand} {item.description}</div>
+                                        <div style="margin-bottom:5px;">{part_num_html}</div>
+                                        <div style="margin-bottom:8px;flex-wrap:wrap;">{attrs_html}</div>
+                                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                                            <div>
+                                                <span style="font-size:1.5em;font-weight:800;color:{border_color};">${item.price:.2f}</span>
+                                                {list_html}
+                                            </div>
+                                            <div style="text-align:right;">
+                                                <div style="font-weight:600;color:#374151;font-size:0.9em;">{item.store}</div>
+                                                <div>{avail_html}</div>
+                                                <div style="color:#6b7280;font-size:0.82em;">{item.eta}</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -520,16 +550,32 @@ def render_quote():
                             unsafe_allow_html=True,
                         )
 
+                    # ---- QUOTE TOTALS ----
                     chosen_part_cost = display_items[0].price
                     parts_markup = chosen_part_cost * 1.30
                     calculated_labor = labor_hours * 100.00
-                    grand_total = parts_markup + calculated_labor
+                    subtotal = parts_markup + calculated_labor
+
+                    # Discount
+                    if discount_type == T["discount_type_pct"]:
+                        discount_amount = subtotal * (discount_val / 100.0)
+                    else:
+                        discount_amount = float(discount_val)
+                    after_discount = max(0.0, subtotal - discount_amount)
+
+                    # Tax
+                    tax_amount = after_discount * (tax_rate / 100.0)
+                    grand_total = after_discount + tax_amount
 
                     st.markdown(f"### {T['summary']}")
                     col_l, col_r = st.columns(2)
                     with col_l:
                         st.metric(T["parts_line"], f"${parts_markup:.2f}")
                         st.metric(f"{T['labor_line']} ({labor_hours} hrs)", f"${calculated_labor:.2f}")
+                        if discount_amount > 0:
+                            st.metric(f"- {T['discount_line']}", f"-${discount_amount:.2f}", delta_color="inverse")
+                        if tax_amount > 0:
+                            st.metric(f"+ {T['tax_line']} ({tax_rate:.2f}%)", f"${tax_amount:.2f}")
                     with col_r:
                         st.markdown(
                             f"""

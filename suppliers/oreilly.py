@@ -243,6 +243,11 @@ def _parse_enterprise_products(data: dict) -> list[dict]:
             if label and values:
                 attrs[label] = values[0].get("displayDescription") or values[0].get("valueDescription") or ""
 
+        # Image URL (O'Reilly paths are relative to base)
+        primary_img = product.get("primaryImage") or {}
+        img_path = (primary_img.get("mediumUri") or {}).get("path") or ""
+        image_url = f"https://www.oreillypro.com{img_path}" if img_path else ""
+
         results.append({
             "brand": brand,
             "description": description,
@@ -255,6 +260,7 @@ def _parse_enterprise_products(data: dict) -> list[dict]:
             "position": position,
             "attributes": attrs,
             "fits_vehicle": item.get("applicationStatus") == "VERIFIED",
+            "image_url": image_url,
         })
 
     return results
@@ -333,8 +339,9 @@ def search_oreilly(
                 position=row.get("position", ""),
                 attributes=row.get("attributes", {}),
                 fits_vehicle=row.get("fits_vehicle", False),
+                image_url=row.get("image_url", ""),
             ))
-            if len(parts) >= 5:
+            if len(parts) >= 20:
                 break
 
         return SupplierSearchResult(store=store, parts=parts)

@@ -11,10 +11,11 @@ class PartResult:
     list_price: float = 0.0
     store_qty: int = 0
     total_qty: int = 0
-    position: str = ""          # Front / Rear / etc.
-    description: str = ""       # Full part name
-    attributes: dict = field(default_factory=dict)   # Pad Type, Hardware, etc.
+    position: str = ""
+    description: str = ""
+    attributes: dict = field(default_factory=dict)
     fits_vehicle: bool = False
+    image_url: str = ""
 
 
 @dataclass

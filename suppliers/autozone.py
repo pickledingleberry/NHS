@@ -163,8 +163,8 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
     params: dict = {
         "partGroupId": part_group_id,
         "ignoreVehicleSpecificProductsCheck": "false",
-        "ignorePositionPreselection": "true",  # skip Front/Rear prompt
-        "recordsPerPage": "5",
+        "ignorePositionPreselection": "true",
+        "recordsPerPage": "20",   # full page of results
         "pageNumber": "1",
         "primaryStore": "true",
         "includePnA": "true",
@@ -236,20 +236,28 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
 
         # Product attributes (Position, Pad Type, Hardware Included, etc.)
         attrs: dict = {}
-        position = ""
+        position_parts: list[str] = []
         for attr in sku.get("productAttributes") or []:
             label = attr.get("label") or ""
             value = attr.get("value") or ""
-            if label and value:
+            if not (label and value):
+                continue
+            lbl_lower = label.lower()
+            if lbl_lower in ("location", "position"):
+                position_parts.append(value)
+            elif lbl_lower in ("per car quantity", "per car qty"):
+                pass  # skip clutter
+            else:
                 attrs[label] = value
-                if label.lower() == "location":
-                    position = value
+
+        position = " / ".join(position_parts) if position_parts else ""
 
         fits = (sku.get("vehicleFitment") or {}).get("vehicleFit") == "FITS"
+        image_url = sku.get("productImageUrl") or ""
 
         parsed.append({
             "brand": brand[:80],
-            "description": description[:100],
+            "description": description[:120],
             "part_number": part_number,
             "price": price,
             "list_price": list_price,
@@ -259,6 +267,7 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
             "position": position,
             "attributes": attrs,
             "fits_vehicle": fits,
+            "image_url": image_url,
         })
 
     return parsed
@@ -353,7 +362,7 @@ def search_autozone(
             for pgid in part_group_ids:
                 results = _get_products(page, pgid, session, vehicle)
                 all_parts.extend(results)
-                if len(all_parts) >= 5:
+                if len(all_parts) >= 20:
                     break
 
             if not all_parts:
@@ -371,7 +380,7 @@ def search_autozone(
             seen: set[tuple[str, float]] = set()
             parts: list[PartResult] = []
             for row in sorted(all_parts, key=lambda x: x["price"]):
-                key = (row["brand"].lower(), row["price"])
+                key = (row["brand"].lower(), row.get("part_number", ""), row["price"])
                 if key in seen:
                     continue
                 seen.add(key)
@@ -388,8 +397,9 @@ def search_autozone(
                 position=row.get("position", ""),
                 attributes=row.get("attributes", {}),
                 fits_vehicle=row.get("fits_vehicle", False),
+                image_url=row.get("image_url", ""),
             ))
-                if len(parts) >= 5:
+                if len(parts) >= 20:
                     break
 
             return SupplierSearchResult(store=store, parts=parts)
