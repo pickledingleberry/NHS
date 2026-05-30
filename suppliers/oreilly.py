@@ -61,19 +61,26 @@ def _login(session: requests.Session, creds: SupplierCredentials) -> tuple[str |
     return token, sticky
 
 
-def _get_store_number(session: requests.Session, token: str, sticky: str | None) -> int:
+def _get_store_info(session: requests.Session, token: str, sticky: str | None) -> tuple[int, str]:
     response = session.get(
         f"{AUTH_BASE}/session/user",
         headers=_headers(token, sticky),
         timeout=30,
     )
-    if response.status_code != 200:
-        return 0
+    store_id = 0
+    platform = PLATFORM
 
-    data = response.json()
-    shop = data.get("currentShop") or {}
-    home_store = shop.get("homeStore") or {}
-    return int(home_store.get("storeId") or shop.get("storeNumber") or 0)
+    if response.status_code == 200:
+        try:
+            data = response.json()
+            shop = data.get("currentShop") or {}
+            home_store = shop.get("homeStore") or {}
+            store_id = int(home_store.get("storeId") or shop.get("storeNumber") or 0)
+            platform = shop.get("platform") or data.get("platform") or PLATFORM
+        except Exception:
+            pass
+
+    return store_id, platform
 
 
 def _collect_products(node: Any, query: str, found: list[dict]) -> None:
@@ -81,7 +88,7 @@ def _collect_products(node: Any, query: str, found: list[dict]) -> None:
         price = None
         for key, value in node.items():
             key_lower = key.lower()
-            if key_lower in {"price", "yourprice", "listprice", "unitprice", "cost", "amount"}:
+            if key_lower in {"price", "yourprice", "listprice", "unitprice", "cost", "amount", "totalprice"}:
                 if isinstance(value, (int, float)):
                     price = float(value)
                 elif isinstance(value, str):
@@ -95,6 +102,7 @@ def _collect_products(node: Any, query: str, found: list[dict]) -> None:
             or node.get("description")
             or node.get("partDescription")
             or node.get("title")
+            or node.get("lineCode")
             or query
         )
         availability = (
@@ -127,6 +135,7 @@ def _search_parts(
     sticky: str | None,
     query: str,
     store_number: int,
+    platform: str,
 ) -> list[dict]:
     headers = _headers(token, sticky)
     endpoints = [
@@ -137,7 +146,7 @@ def _search_parts(
                 "productSearchRequest": {
                     "pageSize": 5,
                     "marketId": MARKET_ID,
-                    "platform": PLATFORM,
+                    "platform": platform,
                     "sessionId": "1",
                     "query": query,
                     "storeNumber": store_number,
@@ -149,24 +158,26 @@ def _search_parts(
             {"marketId": MARKET_ID, "size": 5, "query": query},
         ),
         (
-            f"{AUTH_BASE}/searches/suggestions",
-            None,
+            f"{SEARCH_BASE}/v1/searches/products",
+            {
+                "features": [{"type": "FACET_MANUFACTURER_BRAND_NAMES_AND_CODES"}],
+                "resultOffset": 0,
+                "pageSize": 5,
+                "marketId": MARKET_ID,
+                "storeNumber": store_number,
+                "sorts": [],
+                "filters": [],
+                "platform": platform,
+                "sessionId": "1",
+                "requestContext": {},
+            },
         ),
     ]
 
     collected: list[dict] = []
     for url, body in endpoints:
         try:
-            if body is None:
-                response = session.get(
-                    url,
-                    params={"query": query, "marketId": MARKET_ID},
-                    headers=headers,
-                    timeout=30,
-                )
-            else:
-                response = session.post(url, json=body, headers=headers, timeout=30)
-
+            response = session.post(url, json=body, headers=headers, timeout=30)
             if response.status_code != 200:
                 continue
             if "application/json" not in response.headers.get("Content-Type", ""):
@@ -205,8 +216,8 @@ def search_oreilly(
         if not token:
             return SupplierSearchResult(store=store, error="O'Reilly login succeeded but no access token was returned")
 
-        store_number = _get_store_number(session, token, sticky)
-        rows = _search_parts(session, token, sticky, query, store_number)
+        store_number, platform = _get_store_info(session, token, sticky)
+        rows = _search_parts(session, token, sticky, query, store_number, platform)
         if not rows:
             return SupplierSearchResult(
                 store=store,
