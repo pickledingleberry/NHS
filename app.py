@@ -585,7 +585,7 @@ def render_quote():
     ctrl_a, ctrl_b, ctrl_c, ctrl_d = st.columns(4)
     with ctrl_a:
         show_cheapest = st.toggle(T["toggle_cheap"], value=False)
-        hide_non_fitting = st.toggle("Ocultar partes que no encajan / Hide non-fitting parts", value=st.session_state.hide_non_fitting)
+        hide_non_fitting = st.toggle("Mostrar solo piezas garantizadas para encajar / Show only verified fitting parts", value=st.session_state.hide_non_fitting)
         if hide_non_fitting != st.session_state.hide_non_fitting:
             st.session_state.hide_non_fitting = hide_non_fitting
             st.rerun()
@@ -623,9 +623,9 @@ def render_quote():
                 st.write(f"- {message}")
 
     if scraped_data:
-        # Filter out non-fitting if toggle is enabled
+        # Filter out non-fitting if toggle is enabled (strictly show only verified fitting recommendations)
         if st.session_state.hide_non_fitting and vin_in and len(vin_in) == 17:
-            scraped_data = [p for p in scraped_data if not p.does_not_fit]
+            scraped_data = [p for p in scraped_data if p.fits_vehicle]
 
         if not scraped_data:
             st.warning("No se encontraron partes compatibles con este VIN / No compatible parts found for this VIN")
