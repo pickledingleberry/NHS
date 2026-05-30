@@ -1,16 +1,251 @@
+import json
+import re
+import urllib.parse
+
 from config import SupplierCredentials
 from suppliers.browser_utils import (
     browser_page,
     dismiss_overlays,
-    extract_price,
     fill_first,
     safe_goto,
-    unique_parts,
     wait_for_any,
 )
 from suppliers.models import PartResult, SupplierSearchResult
 
 LOGIN_URL = "https://www.autozonepro.com/ui/login"
+BASE = "https://www.autozonepro.com"
+
+
+def _az_login(page) -> tuple[dict, bool]:
+    """Perform two-step AutoZone login. Returns (session_data, success)."""
+    safe_goto(page, LOGIN_URL)
+    dismiss_overlays(page)
+
+    if not wait_for_any(page, ['input[name="username"]', 'input[type="text"]'], timeout_ms=10000):
+        return {}, False
+    if not fill_first(page, ['input[name="username"]', 'input[type="text"]'], ""):
+        return {}, False
+
+    # This is a two-step login — username first, then password
+    return {}, True
+
+
+def _az_two_step_login(page, user: str, password: str) -> bool:
+    safe_goto(page, LOGIN_URL)
+    dismiss_overlays(page)
+
+    if not wait_for_any(page, ['input[name="username"]', 'input[type="text"]'], timeout_ms=10000):
+        return False
+
+    if not fill_first(page, ['input[name="username"]', 'input[type="text"]'], user):
+        return False
+
+    page.locator('button[type="submit"]').first.click(force=True)
+    page.wait_for_timeout(3000)
+
+    if not wait_for_any(page, ['input[type="password"]'], timeout_ms=10000):
+        return False
+
+    for selector in ['input[type="radio"][value*="password" i]', 'label:has-text("Enter my password")']:
+        try:
+            el = page.locator(selector).first
+            if el.count() and el.is_visible():
+                el.click(timeout=3000)
+                page.wait_for_timeout(500)
+                break
+        except Exception:
+            pass
+
+    if not fill_first(page, ['input[type="password"]', 'input[name="password"]'], password):
+        return False
+
+    page.locator('button[type="submit"]').first.click(force=True)
+    page.wait_for_timeout(4000)
+    return "login" not in page.url.lower()
+
+
+def _get_session(page) -> dict:
+    """Extract storeId, customerId, and other session data from the logged-in page."""
+    data = page.evaluate("""
+        () => {
+            // Try Next.js page data
+            const nd = window.__NEXT_DATA__;
+            if (nd) {
+                const pp = nd.props?.pageProps || {};
+                const user = pp.user || pp.account || pp.session || {};
+                return {
+                    storeId: String(pp.storeId || user.storeId || pp.primaryStoreId || ""),
+                    customerId: String(pp.customerId || user.customerId || user.id || ""),
+                    raw: JSON.stringify(Object.keys(nd.props?.pageProps || {}))
+                };
+            }
+            return {storeId: "", customerId: ""};
+        }
+    """)
+    return data or {}
+
+
+def _get_vehicle_data(page, vin: str) -> dict:
+    """Get AutoZone vehicle IDs (makeId, modelId, vehicleQuestions) for a VIN."""
+    result = page.evaluate(f"""
+        async () => {{
+            try {{
+                const r = await fetch(
+                    '/sls/commercial/vehicle-service/vehicle/decoder/v1/parts-vehicle-questions-answers?vin={vin}',
+                    {{credentials: 'include'}}
+                );
+                if (!r.ok) return {{}};
+                return await r.json();
+            }} catch(e) {{ return {{_error: e.message}}; }}
+        }}
+    """)
+    return result or {}
+
+
+def _search_part_groups(page, query: str, session: dict) -> list[str]:
+    """Search and return partGroupIds for a query term."""
+    body = {
+        "searchText": query,
+        "primaryStore": True,
+        "includePnA": True,
+        "interChange": False,
+        "ignoreVehicleSpecificProductsCheck": True,
+        "pageNumber": 1,
+        "recordsPerPage": 5,
+        "exactMatch": False,
+    }
+    if session.get("customerId"):
+        body["customerId"] = session["customerId"]
+    if session.get("storeId"):
+        body["storeId"] = session["storeId"]
+
+    result = page.evaluate(f"""
+        async () => {{
+            try {{
+                const r = await fetch('/sls/commercial-catalog/catalog/lookup/v4/search', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    credentials: 'include',
+                    body: JSON.stringify({json.dumps(body)})
+                }});
+                return await r.json();
+            }} catch(e) {{ return {{_error: e.message}}; }}
+        }}
+    """)
+
+    if not result or "_error" in result:
+        return []
+
+    # Parse partGroupIds from redirectUrl: "?partGroupIds=azpg4204!azpg1368!..."
+    redirect = result.get("redirectUrl", "")
+    if "partGroupIds=" in redirect:
+        raw = redirect.split("partGroupIds=")[1].split("&")[0]
+        return raw.split("!")[:3]  # first 3 part groups
+    return []
+
+
+def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> list[dict]:
+    """Fetch products for a partGroupId, return list of {brand, price, eta}."""
+    params: dict = {
+        "partGroupId": part_group_id,
+        "ignoreVehicleSpecificProductsCheck": "false",
+        "ignorePositionPreselection": "true",  # skip Front/Rear prompt
+        "recordsPerPage": "5",
+        "pageNumber": "1",
+        "primaryStore": "true",
+        "includePnA": "true",
+    }
+
+    if session.get("storeId"):
+        params["storeId"] = session["storeId"]
+    if session.get("customerId"):
+        params["customerId"] = session["customerId"]
+
+    # Add vehicle parameters if available
+    make_id = vehicle.get("makeId") or vehicle.get("make", {}).get("makeId")
+    model_id = vehicle.get("modelId") or vehicle.get("model", {}).get("modelId")
+    year = vehicle.get("year")
+    vehicle_type_id = vehicle.get("vehicleTypeId", "5")
+    vehicle_questions = vehicle.get("vehicleQuestions") or _build_vehicle_questions(vehicle)
+
+    if make_id and model_id and year:
+        params.update({
+            "makeId": str(make_id),
+            "modelId": str(model_id),
+            "year": str(year),
+            "vehicleTypeId": str(vehicle_type_id),
+        })
+        if vehicle_questions:
+            params["vehicleQuestions"] = vehicle_questions
+    else:
+        params["ignoreVehicleSpecificProductsCheck"] = "true"
+
+    qs = urllib.parse.urlencode(params)
+    result = page.evaluate(f"""
+        async () => {{
+            try {{
+                const r = await fetch('/sls/commercial-catalog/catalog/lookup/v3/products?{qs}',
+                    {{credentials: 'include'}}
+                );
+                return await r.json();
+            }} catch(e) {{ return {{_error: e.message}}; }}
+        }}
+    """)
+
+    if not result or "_error" in result:
+        return []
+
+    parsed: list[dict] = []
+    for sku in result.get("skuRecords", []):
+        brand = sku.get("brandName") or sku.get("itemDescription", "")[:40]
+        pna = sku.get("pna") or {}
+        price = _extract_price_from_pna(pna)
+        if not price:
+            continue
+        avail = pna.get("availability") or {}
+        if avail.get("storeQuantity", 0) > 0:
+            eta = "En tienda / In stock"
+        elif avail.get("hubQuantity", 0) > 0 or avail.get("vdpQuantity", 0) > 0:
+            eta = avail.get("deliveryDayAfterCutoff") or "Entrega / Delivery"
+        elif avail.get("dmQuantity", 0) > 0:
+            eta = "Mañana / Tomorrow"
+        else:
+            eta = "Disponible / Available"
+        parsed.append({"brand": brand[:80], "price": price, "eta": eta})
+
+    return parsed
+
+
+def _extract_price_from_pna(pna: dict) -> float | None:
+    """Try multiple field names to extract the shop price from a pna object."""
+    if not pna:
+        return None
+    for key in ("yourPrice", "netPrice", "commercialPrice", "price", "listPrice", "corePrice"):
+        val = pna.get(key)
+        if isinstance(val, (int, float)) and val > 0:
+            return float(val)
+        if isinstance(val, str):
+            try:
+                v = float(val.replace("$", "").replace(",", ""))
+                if v > 0:
+                    return v
+            except ValueError:
+                pass
+    # Walk nested pricing objects
+    for val in pna.values():
+        if isinstance(val, dict):
+            found = _extract_price_from_pna(val)
+            if found:
+                return found
+    return None
+
+
+def _build_vehicle_questions(vehicle: dict) -> str:
+    """Build vehicleQuestions string from whatever vehicle data is available."""
+    answers = vehicle.get("answers") or vehicle.get("vehicleAnswers") or {}
+    if isinstance(answers, dict):
+        return "||".join(f"{k}:{v}" for k, v in answers.items())
+    return ""
 
 
 def search_autozone(
@@ -24,114 +259,69 @@ def search_autozone(
 
     try:
         with browser_page(engine="firefox") as page:
-            safe_goto(page, LOGIN_URL)
-            dismiss_overlays(page)
-
-            # Step 1: Username
-            if not wait_for_any(page, ['input[name="username"]', 'input[type="text"]'], timeout_ms=10000):
-                return SupplierSearchResult(store=store, error="AutoZone login page did not load")
-
-            if not fill_first(page, ['input[name="username"]', 'input[type="text"]'], creds.user):
-                return SupplierSearchResult(store=store, error="Could not find AutoZone username field")
-
-            page.locator('button[type="submit"]').first.click(force=True)
-            page.wait_for_timeout(3000)
-
-            # Step 2: Password on second screen
-            if not wait_for_any(page, ['input[type="password"]', 'input[name="password"]'], timeout_ms=10000):
-                return SupplierSearchResult(store=store, error="AutoZone password step did not appear — check username")
-
-            for selector in ['input[type="radio"][value*="password" i]', 'label:has-text("Enter my password")']:
-                try:
-                    el = page.locator(selector).first
-                    if el.count() and el.is_visible():
-                        el.click(timeout=3000)
-                        page.wait_for_timeout(500)
-                        break
-                except Exception:
-                    pass
-
-            if not fill_first(page, ['input[type="password"]', 'input[name="password"]'], creds.password):
-                return SupplierSearchResult(store=store, error="Could not find AutoZone password field")
-
-            page.locator('button[type="submit"]').first.click(force=True)
-            page.wait_for_timeout(4000)
-
-            if "login" in page.url.lower():
+            if not _az_two_step_login(page, creds.user, creds.password):
                 return SupplierSearchResult(store=store, error="AutoZone login failed — check AZ_USER / AZ_PASS")
 
-            # Step 3: VIN lookup if provided
+            session = _get_session(page)
+
+            vehicle: dict = {}
             if vin and len(vin) == 17:
-                try:
-                    vin_selectors = [
-                        'input[placeholder*="VIN"]',
-                        'input[placeholder*="vin"]',
-                        'input[aria-label*="VIN"]',
-                    ]
-                    if fill_first(page, vin_selectors, vin):
-                        page.keyboard.press("Enter")
-                        page.wait_for_timeout(2000)
-                except Exception:
-                    pass
+                vehicle = _get_vehicle_data(page, vin)
 
-            # Step 4: Search for part
-            # AutoZone Pro search bar placeholder: "Enter a product, keyword, part #, VIN, or license plate and state"
-            search_selectors = [
-                'input[placeholder*="product, keyword"]',
-                'input[placeholder*="keyword"]',
-                'input[placeholder*="part #"]',
-                'input[placeholder*="Search"]',
-                'input[aria-label*="Search"]',
-                'input[type="search"]',
-                'input[name*="search"]',
-                'input[class*="search"]',
-            ]
-            if not fill_first(page, search_selectors, query):
-                return SupplierSearchResult(store=store, error="Could not find AutoZone search box after login")
+            part_group_ids = _search_part_groups(page, query, session)
 
-            page.keyboard.press("Enter")
-            page.wait_for_timeout(4000)
+            if not part_group_ids:
+                # Fallback: try common part group IDs for generic queries
+                part_group_ids = _fallback_part_groups(query)
 
-            # Step 5: Scrape results
-            cards = page.locator(
-                '[data-testid*="product"], [class*="product-card"], '
-                '[class*="ProductCard"], [class*="part-result"], '
-                'article, [class*="search-result"]'
-            )
-            parsed: list[dict] = []
-            for i in range(min(cards.count(), 12)):
-                try:
-                    text = cards.nth(i).inner_text(timeout=2000)
-                except Exception:
+            all_parts: list[dict] = []
+            for pgid in part_group_ids:
+                results = _get_products(page, pgid, session, vehicle)
+                all_parts.extend(results)
+                if len(all_parts) >= 5:
+                    break
+
+            if not all_parts:
+                return SupplierSearchResult(
+                    store=store,
+                    error="AutoZone logged in but no priced results found — try a specific part number",
+                )
+
+            # Sort by price, dedupe
+            seen: set[tuple[str, float]] = set()
+            parts: list[PartResult] = []
+            for row in sorted(all_parts, key=lambda x: x["price"]):
+                key = (row["brand"].lower(), row["price"])
+                if key in seen:
                     continue
-                if len(text) < 8:
-                    continue
-                price = extract_price(text)
-                if price is None:
-                    continue
-                lines = [line.strip() for line in text.splitlines() if line.strip()]
-                brand = lines[0][:80] if lines else query
-                eta = "En tienda / In stock"
-                if any(w in text.lower() for w in ("tomorrow", "mañana", "next day")):
-                    eta = "Mañana / Tomorrow"
-                parsed.append({"brand": brand, "price": price, "eta": eta})
+                seen.add(key)
+                parts.append(PartResult(store=store, brand=row["brand"], price=row["price"], eta=row["eta"]))
+                if len(parts) >= 5:
+                    break
 
-            if not parsed:
-                # Last resort: look for any price on the page
-                all_text = page.content()
-                import re
-                prices = re.findall(r'\$\s*([\d,]+\.\d{2})', all_text)
-                prices = [float(p.replace(",", "")) for p in prices if 0.5 < float(p.replace(",", "")) < 9999]
-                if prices:
-                    parsed.append({"brand": query, "price": min(prices), "eta": "En tienda / In stock"})
-
-            parts = [
-                PartResult(store=store, brand=row["brand"], price=row["price"], eta=row["eta"])
-                for row in unique_parts(parsed)
-            ]
-            if not parts:
-                return SupplierSearchResult(store=store, error="AutoZone logged in but no priced results found")
             return SupplierSearchResult(store=store, parts=parts)
 
     except Exception as exc:
         return SupplierSearchResult(store=store, error=f"AutoZone error: {exc}")
+
+
+def _fallback_part_groups(query: str) -> list[str]:
+    """Map common part names to AutoZone partGroupIds when API search fails."""
+    q = query.lower()
+    mapping = [
+        (["brake pad", "balata", "freno delantero", "front brake"], ["azpg4204"]),
+        (["rotor", "disco", "brake rotor"], ["azpg1368"]),
+        (["brake kit", "brake set", "kit frenos"], ["60407"]),
+        (["oil filter", "filtro aceite", "filtro de aceite"], ["azpg1294"]),
+        (["air filter", "filtro aire", "filtro de aire"], ["azpg1296"]),
+        (["spark plug", "bujia", "bujía"], ["azpg1302"]),
+        (["alternator", "alternador"], ["azpg1356"]),
+        (["battery", "batería", "bateria"], ["azpg1246"]),
+        (["starter", "marcha", "arranque"], ["azpg1360"]),
+        (["belt", "correa", "banda"], ["azpg1338"]),
+        (["wiper", "limpiador", "pluma"], ["azpg1400"]),
+    ]
+    for keywords, ids in mapping:
+        if any(k in q for k in keywords):
+            return ids
+    return []
