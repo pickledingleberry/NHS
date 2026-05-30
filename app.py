@@ -3,7 +3,6 @@ import requests
 
 st.set_page_config(
     page_title="Taller del Barrio",
-    page_icon="🔧",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -20,106 +19,106 @@ TEXT = {
         "shop_tagline": "Tu taller de confianza en el vecindario",
         "welcome": "¡Bienvenido!",
         "welcome_sub": "Aquí puede buscar refacciones y hacer una cotización en minutos. Todo es fácil — paso por paso.",
-        "btn_start": "🚗 Empezar una Cotización",
-        "btn_help": "❓ Cómo Usar el Sistema",
-        "btn_home": "🏠 Volver al Inicio",
+        "btn_start": "Empezar una Cotización",
+        "btn_help": "Cómo Usar el Sistema",
+        "btn_home": "Volver al Inicio",
         "card_quote_title": "Cotizar Refacciones",
         "card_quote_desc": "Ponga el VIN del carro, escriba la pieza que necesita, y le damos el precio total.",
         "card_help_title": "Ayuda Rápida",
         "card_help_desc": "Instrucciones sencillas para usar el sistema sin complicaciones.",
         "card_contact_title": "Contacto del Taller",
         "card_contact_desc": "Llámenos si tiene dudas. Estamos para servirle.",
-        "phone": "📞 Teléfono: (555) 123-4567",
-        "hours": "🕐 Horario: Lun–Sáb 8:00 AM – 6:00 PM",
-        "address": "📍 123 Calle Principal, Su Ciudad",
+        "phone": "Teléfono: (555) 123-4567",
+        "hours": "Horario: Lun–Sáb 8:00 AM – 6:00 PM",
+        "address": "123 Calle Principal, Su Ciudad",
         "step1": "Paso 1 — Carro",
         "step2": "Paso 2 — Pieza",
         "step3": "Paso 3 — Resultado",
         "vin_lbl": "Número VIN (17 letras y números)",
         "vin_hint": "El VIN está en el tablero del lado del conductor o en la puerta.",
-        "vin_ok": "✅ Carro encontrado:",
-        "vin_bad": "❌ VIN no válido. Revise que sean 17 caracteres.",
+        "vin_ok": "Carro encontrado:",
+        "vin_bad": "VIN no válido. Revise que sean 17 caracteres.",
         "part_lbl": "¿Qué pieza necesita?",
         "part_hint": "Ejemplo: balatas, alternador, filtro de aceite",
         "part_ph": "Escriba aquí...",
         "toggle_cheap": "Mostrar solo la opción más barata",
         "labor_lbl": "Horas de mano de obra",
         "labor_hint": "Tarifa: $100 por hora",
-        "btn_search": "🔍 Buscar Precios y Calcular Total",
+        "btn_search": "Buscar Precios y Calcular Total",
         "searching": "Buscando en tiendas de refacciones...",
-        "need_part": "⚠️ Por favor escriba qué pieza necesita.",
-        "cheapest": "🏆 ¡LA MÁS BARATA!",
+        "need_part": "Por favor escriba qué pieza necesita.",
+        "cheapest": "¡LA MÁS BARATA!",
         "price": "Precio",
         "stock": "Disponible",
         "summary": "Resumen de su Cotización",
         "parts_line": "Refacciones (con margen del taller)",
         "labor_line": "Mano de obra",
         "total": "TOTAL ESTIMADO",
-        "square_btn": "💳 Cobrar con Square",
+        "square_btn": "Cobrar con Square",
         "square_total": "Total para la terminal:",
         "help_title": "Cómo Usar — Muy Fácil",
         "help_steps": [
-            ("1️⃣", "Entre el VIN de 17 dígitos del carro del cliente."),
-            ("2️⃣", "Escriba el nombre de la pieza (ej: balatas delanteras)."),
-            ("3️⃣", "Ponga las horas de trabajo si aplica."),
-            ("4️⃣", "Presione el botón azul grande para ver precios y el total."),
+            ("1.", "Entre el VIN de 17 dígitos del carro del cliente."),
+            ("2.", "Escriba el nombre de la pieza (ej: balatas delanteras)."),
+            ("3.", "Ponga las horas de trabajo si aplica."),
+            ("4.", "Presione el botón azul grande para ver precios y el total."),
         ],
-        "help_tip": "💡 Consejo: Si no sabe el VIN, pídale al cliente que lo busque en su seguro o tarjeta de registro.",
+        "help_tip": "Consejo: Si no sabe el VIN, pídale al cliente que lo busque en su seguro o tarjeta de registro.",
         "lang_btn": "English",
-        "footer": "Hecho con cariño para el taller de la familia ❤️",
+        "footer": "Hecho con cariño para el taller de la familia",
     },
     "English": {
         "shop_name": "Neighborhood Auto Shop",
         "shop_tagline": "Your trusted neighborhood repair shop",
         "welcome": "Welcome!",
         "welcome_sub": "Look up parts and build a quote in minutes. Easy step-by-step.",
-        "btn_start": "🚗 Start a Quote",
-        "btn_help": "❓ How to Use",
-        "btn_home": "🏠 Back to Home",
+        "btn_start": "Start a Quote",
+        "btn_help": "How to Use",
+        "btn_home": "Back to Home",
         "card_quote_title": "Get a Parts Quote",
         "card_quote_desc": "Enter the VIN, type the part you need, and we'll show the full estimate.",
         "card_help_title": "Quick Help",
         "card_help_desc": "Simple instructions — no tech skills needed.",
         "card_contact_title": "Shop Contact",
         "card_contact_desc": "Call us anytime you have questions.",
-        "phone": "📞 Phone: (555) 123-4567",
-        "hours": "🕐 Hours: Mon–Sat 8:00 AM – 6:00 PM",
-        "address": "📍 123 Main Street, Your City",
+        "phone": "Phone: (555) 123-4567",
+        "hours": "Hours: Mon–Sat 8:00 AM – 6:00 PM",
+        "address": "123 Main Street, Your City",
         "step1": "Step 1 — Vehicle",
         "step2": "Step 2 — Part",
         "step3": "Step 3 — Results",
         "vin_lbl": "VIN Number (17 characters)",
         "vin_hint": "Found on the driver's dashboard or door sticker.",
-        "vin_ok": "✅ Vehicle found:",
-        "vin_bad": "❌ Invalid VIN. Please check all 17 characters.",
+        "vin_ok": "Vehicle found:",
+        "vin_bad": "Invalid VIN. Please check all 17 characters.",
         "part_lbl": "What part do you need?",
         "part_hint": "Example: brake pads, alternator, oil filter",
         "part_ph": "Type here...",
         "toggle_cheap": "Show cheapest option only",
         "labor_lbl": "Labor hours",
         "labor_hint": "Rate: $100 per hour",
-        "btn_search": "🔍 Find Prices & Calculate Total",
+        "btn_search": "Find Prices & Calculate Total",
         "searching": "Searching parts stores...",
-        "need_part": "⚠️ Please enter a part name.",
-        "cheapest": "🏆 CHEAPEST OPTION!",
+        "need_part": "Please enter a part name.",
+        "cheapest": "CHEAPEST OPTION!",
         "price": "Price",
         "stock": "Availability",
         "summary": "Your Quote Summary",
         "parts_line": "Parts (with shop markup)",
         "labor_line": "Labor",
         "total": "ESTIMATED TOTAL",
-        "square_btn": "💳 Charge with Square",
+        "square_btn": "Charge with Square",
         "square_total": "Terminal total:",
         "help_title": "How to Use — Very Easy",
         "help_steps": [
-            ("1️⃣", "Enter the customer's 17-digit VIN."),
-            ("2️⃣", "Type the part name (e.g. front brake pads)."),
-            ("3️⃣", "Set labor hours if needed."),
-            ("4️⃣", "Press the big blue button to see prices and total."),
+            ("1.", "Enter the customer's 17-digit VIN."),
+            ("2.", "Type the part name (e.g. front brake pads)."),
+            ("3.", "Set labor hours if needed."),
+            ("4.", "Press the big blue button to see prices and total."),
         ],
-        "help_tip": "💡 Tip: If you don't have the VIN, ask the customer to check their insurance card or registration.",
+        "help_tip": "Tip: If you don't have the VIN, ask the customer to check their insurance card or registration.",
         "lang_btn": "Español",
-        "footer": "Built with love for the family shop ❤️",
+        "footer": "Built with love for the family shop",
     },
 }
 
@@ -148,8 +147,9 @@ def apply_styles():
             padding: 2.5rem 2rem;
             text-align: center;
             color: white;
-            margin-bottom: 1.5rem;
+            margin: 0 0 1.5rem 0;
             box-shadow: 0 8px 24px rgba(30, 58, 138, 0.25);
+            width: 100%;
         }
         .hero h1 {
             font-size: 2.6rem;
@@ -271,6 +271,14 @@ def apply_styles():
             border: none !important;
         }
 
+        div[data-testid="column"] .stButton > button {
+            min-height: 48px;
+        }
+
+        .toolbar-spacer {
+            height: 0.25rem;
+        }
+
         .footer-text {
             text-align: center;
             color: #9ca3af;
@@ -287,22 +295,32 @@ def apply_styles():
     )
 
 
-def render_header():
-    col_logo, col_lang = st.columns([5, 1])
-    with col_logo:
-        st.markdown(
-            f"""
-            <div class="hero">
-                <h1>🔧 {T['shop_name']}</h1>
-                <p>{T['shop_tagline']}</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+def render_toolbar():
+    show_back = st.session_state.page != "home"
+    col_back, col_mid, col_lang = st.columns([1.2, 4, 1.2])
+
+    with col_back:
+        if show_back:
+            if st.button(T["btn_home"], use_container_width=True):
+                st.session_state.page = "home"
+                st.rerun()
+
     with col_lang:
         if st.button(T["lang_btn"], use_container_width=True):
             st.session_state.lang = "English" if st.session_state.lang == "Español" else "Español"
             st.rerun()
+
+
+def render_header():
+    st.markdown(
+        f"""
+        <div class="hero">
+            <h1>{T['shop_name']}</h1>
+            <p>{T['shop_tagline']}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_home():
@@ -326,7 +344,7 @@ def render_home():
         st.markdown(
             f"""
             <div class="info-card">
-                <h3>🛠️ {T['card_quote_title']}</h3>
+                <h3>{T['card_quote_title']}</h3>
                 <p>{T['card_quote_desc']}</p>
             </div>
             """,
@@ -336,7 +354,7 @@ def render_home():
         st.markdown(
             f"""
             <div class="info-card">
-                <h3>📖 {T['card_help_title']}</h3>
+                <h3>{T['card_help_title']}</h3>
                 <p>{T['card_help_desc']}</p>
             </div>
             """,
@@ -349,7 +367,7 @@ def render_home():
         st.markdown(
             f"""
             <div class="info-card">
-                <h3>📞 {T['card_contact_title']}</h3>
+                <h3>{T['card_contact_title']}</h3>
                 <p>{T['card_contact_desc']}</p>
                 <br>
                 <p>{T['phone']}<br>{T['hours']}<br>{T['address']}</p>
@@ -384,10 +402,6 @@ def decode_vin(vin):
 
 
 def render_quote():
-    if st.button(T["btn_home"]):
-        st.session_state.page = "home"
-        st.rerun()
-
     st.markdown(f'<span class="step-badge">{T["step1"]}</span>', unsafe_allow_html=True)
     vin_in = st.text_input(T["vin_lbl"], max_chars=17, placeholder="1HGBH41JXMN109186").upper()
     st.markdown(f'<p class="hint">{T["vin_hint"]}</p>', unsafe_allow_html=True)
@@ -440,8 +454,8 @@ def render_quote():
                         f"""
                         <div class="{css_class}">
                             <strong>{item['store']}</strong> — <em>{item['brand']}</em><br>
-                            💰 {T['price']}: <strong>${item['price']:.2f}</strong> &nbsp;|&nbsp;
-                            🚚 {T['stock']}: {item['eta']}
+                            {T['price']}: <strong>${item['price']:.2f}</strong> &nbsp;|&nbsp;
+                            {T['stock']}: {item['eta']}
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -461,7 +475,7 @@ def render_quote():
                     st.markdown(
                         f"""
                         <div class="total-box">
-                            <div class="label">⭐ {T['total']}</div>
+                            <div class="label">{T['total']}</div>
                             <div class="amount">${grand_total:.2f}</div>
                         </div>
                         """,
@@ -472,10 +486,6 @@ def render_quote():
 
 
 def render_help():
-    if st.button(T["btn_home"]):
-        st.session_state.page = "home"
-        st.rerun()
-
     st.markdown(f"## {T['help_title']}")
     for icon, step in T["help_steps"]:
         st.markdown(
@@ -492,6 +502,7 @@ def render_help():
 
 # --- Main ---
 apply_styles()
+render_toolbar()
 render_header()
 
 if st.session_state.page == "home":
