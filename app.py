@@ -3,6 +3,12 @@ import requests
 
 from config import get_config
 from suppliers.engine import search_all_suppliers
+from db import init_db, save_quote, get_quotes
+from jargon import map_jargon
+from diagnostics import lookup_code
+
+# Initialize SQLite database
+init_db()
 
 st.set_page_config(
     page_title="Taller del Barrio",
@@ -80,6 +86,15 @@ TEXT = {
         "subtotal": "Subtotal",
         "tax_line": "Impuesto",
         "discount_line": "Descuento",
+        "history_btn": "📋 Ver Historial",
+        "save_btn": "💾 Guardar en Historial",
+        "save_success": "✅ ¡Cotización guardada con éxito!",
+        "cust_name_lbl": "Nombre del cliente",
+        "obd_lbl": "Asistente OBD-II (Código de error, ej: P0302)",
+        "obd_btn": "🔍 Analizar Código",
+        "obd_causes": "Posibles causas:",
+        "obd_suggested": "Refacciones sugeridas:",
+        "search_history": "Buscar en historial (Nombre, VIN, Pieza)",
         "help_title": "Cómo Usar — Muy Fácil",
         "help_steps": [
             ("1.", "Entre el VIN de 17 dígitos del carro del cliente."),
@@ -144,6 +159,15 @@ TEXT = {
         "subtotal": "Subtotal",
         "tax_line": "Tax",
         "discount_line": "Discount",
+        "history_btn": "📋 View History",
+        "save_btn": "💾 Save to History",
+        "save_success": "✅ Quote successfully saved!",
+        "cust_name_lbl": "Customer name",
+        "obd_lbl": "OBD-II Assistant (Error code, e.g. P0302)",
+        "obd_btn": "🔍 Analyze Code",
+        "obd_causes": "Possible causes:",
+        "obd_suggested": "Suggested parts:",
+        "search_history": "Search history (Name, VIN, Part)",
         "help_title": "How to Use — Very Easy",
         "help_steps": [
             ("1.", "Enter the customer's 17-digit VIN."),
@@ -332,13 +356,18 @@ def apply_styles():
 
 def render_toolbar():
     show_back = st.session_state.page != "home"
-    col_back, col_mid, col_lang = st.columns([1.2, 4, 1.2])
+    col_back, col_hist, col_mid, col_lang = st.columns([1.2, 1.4, 3.2, 1.2])
 
     with col_back:
         if show_back:
             if st.button(T["btn_home"], use_container_width=True):
                 st.session_state.page = "home"
                 st.rerun()
+
+    with col_hist:
+        if st.button(T["history_btn"], use_container_width=True):
+            st.session_state.page = "history"
+            st.rerun()
 
     with col_lang:
         if st.button(T["lang_btn"], use_container_width=True):
@@ -549,10 +578,11 @@ def render_quote():
     else:
         st.warning(T["env_missing"])
 
-    # ── Step 1: VIN ────────────────────────────────────────────────────────
+    # ── Step 1: VIN + Customer Info ─────────────────────────────────────────
     vin_col, spec_col = st.columns([2, 1])
     with vin_col:
         st.markdown(f'<span class="step-badge">{T["step1"]}</span>', unsafe_allow_html=True)
+        cust_name = st.text_input(T["cust_name_lbl"], placeholder="e.g. Juan Perez")
         vin_in = st.text_input(T["vin_lbl"], max_chars=17, placeholder="1HGBH41JXMN109186").upper()
         st.markdown(f'<p class="hint">{T["vin_hint"]}</p>', unsafe_allow_html=True)
 
@@ -583,6 +613,40 @@ def render_quote():
                     """,
                     unsafe_allow_html=True,
                 )
+
+    # ── OBD-II Diagnostic Assistant (New!) ──────────────────────────────────
+    st.write("")
+    obd_col, info_col = st.columns([2, 1])
+    with obd_col:
+        obd_in = st.text_input(T["obd_lbl"], max_chars=5, placeholder="P0302").upper().strip()
+        if obd_in:
+            diag = lookup_code(obd_in)
+            if diag:
+                st.info(f"**OBD-II Code {obd_in}**: {diag['title']}\n\n{diag['desc']}")
+                with info_col:
+                    st.markdown(
+                        f"""
+                        <div style="background:#fff1f2;border:2px solid #fecdd3;border-radius:12px;padding:14px 16px;">
+                            <div style="font-weight:700;color:#be123c;margin-bottom:6px;">{T['obd_causes']}</div>
+                            <ul style="margin:0;padding-left:18px;font-size:0.88em;color:#9f1239;">
+                                {"".join(f"<li>{c}</li>" for c in diag['causes'])}
+                            </ul>
+                            <div style="font-weight:700;color:#be123c;margin-top:10px;margin-bottom:4px;">{T['obd_suggested']}</div>
+                            {"".join(f'<span style="background:#fda4af;color:#9f1239;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:4px;display:inline-block;margin-bottom:4px;">{p}</span>' for p in diag['parts'])}
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                # Let user click any suggested diagnostic part to quick-search it
+                st.markdown("<p style='color:#6b7280;font-size:0.85em;margin-bottom:2px;'>Sugerencia diagnóstica / Diagnostic click to search:</p>", unsafe_allow_html=True)
+                sg_cols = st.columns(len(diag["parts"]) + 1)
+                for s_idx, part_s in enumerate(diag["parts"]):
+                    with sg_cols[s_idx]:
+                        if st.button(f"🔍 {part_s.title()}", key=f"diag_{part_s}"):
+                            st.session_state.quick_part = part_s
+                            st.rerun()
+            else:
+                st.error("Código no encontrado / Diagnostic code not in database")
 
     # ── Step 2: Part Search + Quick Buttons ────────────────────────────────
     st.write("")
@@ -630,8 +694,11 @@ def render_quote():
             st.warning(T["need_part"])
         else:
             with st.spinner(T["searching"]):
+                # Apply the Spanish-to-English jargon mapper!
+                translated_query = map_jargon(part_in.strip())
+                
                 results, errors = search_all_suppliers(
-                    part_in.strip(),
+                    translated_query,
                     vin=vin_in if len(vin_in) == 17 else None,
                     config=config,
                 )
@@ -857,6 +924,69 @@ def render_quote():
                 st.markdown(f"**{T['square_total']}** `${grand_total:.2f}`")
                 st.button(T["square_btn"], key="pay_with_square_button", use_container_width=True)
 
+                st.write("")
+                # "Save to History" button action (New!)
+                if st.button(T["save_btn"], type="secondary", use_container_width=True):
+                    vehicle_desc = f"{car_info['Year']} {car_info['Make']} {car_info['Model']}" if car_info else "Vehículo Genérico"
+                    save_quote(
+                        customer_name=cust_name if cust_name else "Cliente General",
+                        vin=vin_in,
+                        vehicle_desc=vehicle_desc,
+                        part_name=chosen_part.description,
+                        part_brand=chosen_part.brand,
+                        part_number=chosen_part.part_number,
+                        part_cost=parts_markup,
+                        labor_hours=labor_hours,
+                        discount=discount_amount,
+                        tax=tax_amount,
+                        grand_total=grand_total,
+                        store=chosen_part.store,
+                    )
+                    st.success(T["save_success"])
+
+
+def render_history():
+    if st.button(T["btn_home"]):
+        st.session_state.page = "home"
+        st.rerun()
+
+    st.markdown("## 📋 Historial de Cotizaciones / Quote History")
+    search_q = st.text_input(T["search_history"], placeholder="e.g. Juan Perez, 2011 Toyota, balatas")
+    
+    quotes_list = get_quotes(search_q)
+    if not quotes_list:
+        st.info("No se encontraron registros / No records found")
+    else:
+        for q in quotes_list:
+            st.markdown(
+                f"""
+                <div style="background:white;border-radius:10px;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #1e3a8a;">
+                    <div style="display:flex;justify-content:between;align-items:baseline;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+                        <span style="font-size:1.15em;font-weight:700;color:#1e3a8a;margin-right:12px;">👤 {q['customer_name']}</span>
+                        <span style="color:#6b7280;font-size:0.85em;">📅 {q['created_at']}</span>
+                    </div>
+                    <div style="font-size:0.95em;color:#374151;margin-bottom:8px;">
+                        🚗 Carro: <strong>{q['vehicle_desc']}</strong> &nbsp;|&nbsp; 
+                        VIN: <code>{q['vin']}</code>
+                    </div>
+                    <div style="font-size:0.95em;color:#374151;margin-bottom:12px;">
+                        🔧 Refacción: <strong>{q['part_brand']} {q['part_name']}</strong> &nbsp;|&nbsp;
+                        Part #: <code>{q['part_number']}</code> ({q['store']})
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f3f4f6;padding-top:10px;flex-wrap:wrap;gap:10px;">
+                        <div style="font-size:0.88em;color:#6b7280;">
+                            Partes (+Markup): ${q['part_cost']:.2f} &nbsp;·&nbsp;
+                            Mano de Obra ({q['labor_hours']} hrs): ${q['labor_hours']*100:.2f} &nbsp;·&nbsp;
+                            Desc: -${q['discount']:.2f} &nbsp;·&nbsp;
+                            Tax: +${q['tax']:.2f}
+                        </div>
+                        <div style="font-size:1.35em;font-weight:800;color:#10b981;">TOTAL: ${q['grand_total']:.2f}</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
 
 def render_help():
     st.markdown(f"## {T['help_title']}")
@@ -882,6 +1012,8 @@ if st.session_state.page == "home":
     render_home()
 elif st.session_state.page == "quote":
     render_quote()
+elif st.session_state.page == "history":
+    render_history()
 else:
     render_help()
 
