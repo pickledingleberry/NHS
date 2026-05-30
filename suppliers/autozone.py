@@ -217,26 +217,30 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
 
 
 def _extract_price_from_pna(pna: dict) -> float | None:
-    """Try multiple field names to extract the shop price from a pna object."""
+    """Extract shop cost from pna.pricing.unformatted.cost (AutoZone API structure)."""
     if not pna:
         return None
-    for key in ("yourPrice", "netPrice", "commercialPrice", "price", "listPrice", "corePrice"):
-        val = pna.get(key)
-        if isinstance(val, (int, float)) and val > 0:
-            return float(val)
-        if isinstance(val, str):
+    # Primary path: pna.pricing.unformatted.cost
+    pricing = pna.get("pricing") or {}
+    unformatted = pricing.get("unformatted") or {}
+    cost = unformatted.get("cost")
+    if isinstance(cost, (int, float)) and cost > 0:
+        return float(cost)
+    # Fallback: list price
+    list_price = unformatted.get("list")
+    if isinstance(list_price, (int, float)) and list_price > 0:
+        return float(list_price)
+    # Fallback: formatted strings
+    formatted = pricing.get("formatted") or {}
+    for key in ("cost", "list"):
+        val = formatted.get(key, "")
+        if isinstance(val, str) and val.startswith("$"):
             try:
                 v = float(val.replace("$", "").replace(",", ""))
                 if v > 0:
                     return v
             except ValueError:
                 pass
-    # Walk nested pricing objects
-    for val in pna.values():
-        if isinstance(val, dict):
-            found = _extract_price_from_pna(val)
-            if found:
-                return found
     return None
 
 
