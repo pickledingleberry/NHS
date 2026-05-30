@@ -489,15 +489,24 @@ def render_quote():
                     if show_cheapest:
                         st.markdown(f"### {T['cheapest']}")
 
+                    st.caption(f"{len(display_items)} resultado(s) / results — ordenado por precio / sorted by price")
+
                     for item in display_items:
                         is_best = item.price == scraped_data[0].price
-                        border_color = "#059669" if is_best else "#2563eb"
+                        supplier_colors = {
+                            "AutoZone Pro": "#f97316",
+                            "O'Reilly First Call": "#16a34a",
+                            "Factory Motor Parts (FMP)": "#2563eb",
+                        }
+                        border_color = supplier_colors.get(item.store, "#6b7280")
 
-                        badge_html = ""
+                        badge_html = f'<span style="background:{border_color};color:white;padding:2px 8px;border-radius:4px;font-size:0.78em;font-weight:700;margin-right:6px;">{item.store}</span>'
                         if item.fits_vehicle:
-                            badge_html += '<span style="background:#16a34a;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:6px;">Fits Vehicle</span>'
+                            badge_html += '<span style="background:#16a34a;color:white;padding:2px 8px;border-radius:4px;font-size:0.78em;margin-right:4px;">Fits Vehicle</span>'
+                        if item.store_qty > 0:
+                            badge_html += '<span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-size:0.78em;margin-right:4px;">En Tienda</span>'
                         if is_best and not show_cheapest:
-                            badge_html += '<span style="background:#f59e0b;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">Mejor precio</span>'
+                            badge_html += '<span style="background:#f59e0b;color:white;padding:2px 8px;border-radius:4px;font-size:0.78em;">Mejor precio</span>'
 
                         pos_html = ""
                         for pos in (item.position or "").split("/"):

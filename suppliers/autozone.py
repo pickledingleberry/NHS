@@ -109,29 +109,50 @@ def _get_vehicle_data(page, vin: str) -> dict:
                     {{credentials: 'include'}}
                 );
                 if (!r.ok) return {{}};
-                return await r.json();
+                const data = await r.json();
+                // Flatten nested structure if needed
+                if (data.vehicleInfo) return data.vehicleInfo;
+                if (data.vehicle) return data.vehicle;
+                return data;
             }} catch(e) {{ return {{_error: e.message}}; }}
         }}
     """)
     return result or {}
 
 
-def _search_part_groups(page, query: str, session: dict) -> list[str]:
+def _search_part_groups(page, query: str, session: dict, vehicle: dict | None = None) -> list[str]:
     """Search and return partGroupIds for a query term."""
     body = {
         "searchText": query,
         "primaryStore": True,
         "includePnA": True,
         "interChange": False,
-        "ignoreVehicleSpecificProductsCheck": True,
+        "ignoreVehicleSpecificProductsCheck": not bool(vehicle),
         "pageNumber": 1,
         "recordsPerPage": 5,
         "exactMatch": False,
     }
     if session.get("customerId"):
-        body["customerId"] = session["customerId"]
+        body["customerId"] = int(session["customerId"])
     if session.get("storeId"):
         body["storeId"] = session["storeId"]
+
+    if vehicle:
+        make_id = vehicle.get("makeId")
+        model_id = vehicle.get("modelId")
+        year = vehicle.get("year")
+        vtype = vehicle.get("vehicleTypeId", "5")
+        vq = vehicle.get("vehicleQuestions") or _build_vehicle_questions(vehicle)
+        if make_id and model_id:
+            body.update({
+                "makeId": str(make_id),
+                "modelId": str(model_id),
+                "year": str(year) if year else "",
+                "vehicleTypeId": str(vtype),
+                "ignoreVehicleSpecificProductsCheck": False,
+            })
+            if vq:
+                body["vehicleQuestions"] = vq
 
     result = page.evaluate(f"""
         async () => {{
@@ -353,7 +374,7 @@ def search_autozone(
             if vin and len(vin) == 17:
                 vehicle = _get_vehicle_data(page, vin)
 
-            part_group_ids = _search_part_groups(page, query, session)
+            part_group_ids = _search_part_groups(page, query, session, vehicle)
 
             if not part_group_ids:
                 part_group_ids = _fallback_part_groups(query)

@@ -7,12 +7,6 @@ from suppliers.models import PartResult, SupplierSearchResult
 from suppliers.oreilly import search_oreilly
 
 
-def _best_part(result: SupplierSearchResult) -> PartResult | None:
-    if not result.parts:
-        return None
-    return min(result.parts, key=lambda part: part.price)
-
-
 def search_all_suppliers(
     query: str,
     vin: str | None = None,
@@ -23,8 +17,8 @@ def search_all_suppliers(
 
     if config.autozone.configured:
         jobs.append(("autozone", search_autozone, config.autozone))
-    if config.fmp.configured:
-        jobs.append(("fmp", search_fmp, config.fmp))
+    # if config.fmp.configured:
+    #     jobs.append(("fmp", search_fmp, config.fmp))
     if config.oreilly.configured:
         jobs.append(("oreilly", search_oreilly, config.oreilly))
 
@@ -40,11 +34,11 @@ def search_all_suppliers(
         }
         for future in as_completed(future_map):
             supplier_result: SupplierSearchResult = future.result()
-            best = _best_part(supplier_result)
-            if best:
-                results.append(best)
-            elif supplier_result.error:
+            if supplier_result.parts:
+                results.extend(supplier_result.parts)
+            if supplier_result.error:
                 errors.append(f"{supplier_result.store}: {supplier_result.error}")
 
-    results.sort(key=lambda item: item.price)
+    # Sort by price; surface in-stock items first within same price range
+    results.sort(key=lambda r: (r.price, 0 if r.store_qty > 0 else 1))
     return results, errors
