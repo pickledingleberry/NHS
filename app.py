@@ -517,6 +517,31 @@ QUICK_PARTS = [
 ]
 
 
+# ---- Labor estimation guide ----
+LABOR_ESTIMATES = [
+    (["brake pad", "balata", "freno"], 1.5, "Cambio de balatas / Brake pads replacement"),
+    (["rotor", "disco"], 2.0, "Cambio de discos y balatas / Rotor & pads replacement"),
+    (["spark plug", "bujia", "bujía"], 1.0, "Cambio de bujías / Spark plugs change"),
+    (["oil filter", "filtro de aceite", "filtro aceite"], 0.5, "Servicio de aceite y filtro / Oil service"),
+    (["air filter", "filtro de aire", "filtro aire"], 0.3, "Reemplazo de filtro de aire / Air filter change"),
+    (["alternator", "alternador"], 2.0, "Reemplazo de alternador / Alternator swap"),
+    (["starter", "marcha"], 1.5, "Reemplazo de marcha / Starter replacement"),
+    (["battery", "batería", "bateria"], 0.5, "Cambio de batería / Battery change"),
+    (["water pump", "bomba de agua"], 3.5, "Bomba de agua / Water pump swap"),
+    (["thermostat", "termostato"], 1.5, "Termostato / Thermostat change"),
+    (["serpentine belt", "banda", "correa"], 0.8, "Banda de accesorios / Serpentine belt change"),
+    (["shocks", "amortiguador", "strut"], 3.0, "Amortiguadores (par) / Struts replacement (pair)"),
+]
+
+
+def estimate_labor_hours(query: str) -> float:
+    q = query.lower()
+    for keywords, hours, desc in LABOR_ESTIMATES:
+        if any(k in q for k in keywords):
+            return hours
+    return 1.0  # default fallback
+
+
 def render_quote():
     config = get_config()
     if config.any_configured:
@@ -590,7 +615,9 @@ def render_quote():
             st.session_state.hide_non_fitting = hide_non_fitting
             st.rerun()
     with ctrl_b:
-        labor_hours = st.number_input(T["labor_lbl"], min_value=0.0, max_value=20.0, value=1.0, step=0.5)
+        estimated_hours = estimate_labor_hours(part_in)
+        labor_hours = st.number_input(T["labor_lbl"], min_value=0.0, max_value=20.0, value=estimated_hours, step=0.5)
+        st.caption(f"Estimado automático: **{estimated_hours} hrs** (pude cambiarlo manualmente)")
     with ctrl_c:
         tax_rate = st.number_input(T["tax_lbl"], min_value=0.0, max_value=25.0, value=0.0, step=0.25, format="%.2f")
     with ctrl_d:
@@ -778,7 +805,7 @@ def render_quote():
                             unsafe_allow_html=True,
                         )
                         st.markdown(f"**{T['square_total']}** `${grand_total:.2f}`")
-                        st.button(T["square_btn"], use_container_width=True)
+                        st.button(T["square_btn"], key="pay_with_square_button", use_container_width=True)
 
 
 def render_help():
