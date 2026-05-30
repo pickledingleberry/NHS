@@ -11,6 +11,8 @@ from suppliers.models import PartResult, SupplierSearchResult
 BASE = "https://www.oreillypro.com"
 AUTH_BASE = f"{BASE}/FirstCallOnline"
 SEARCH_BASE = f"{BASE}/FirstCallOnline/modernized/entsearch-search-service"
+API_BASE = f"{BASE}/FirstCallOnline/modernized/api/v1"
+VEHICLE_LOOKUP = f"{BASE}/FirstCallOnline/modernized/api/v1/vehicles/lookup"
 MARKET_ID = "06"
 PLATFORM = "PLATFORM_05"
 
@@ -38,15 +40,10 @@ def _headers(token: str | None = None, sticky: str | None = None) -> dict[str, s
 def _login(session: requests.Session, creds: SupplierCredentials) -> tuple[str | None, str | None]:
     response = session.post(
         f"{AUTH_BASE}/auth/rest/v2/login",
-        json={
-            "loginName": creds.user,
-            "password": creds.password,
-            "rememberMe": True,
-        },
+        json={"loginName": creds.user, "password": creds.password, "rememberMe": True},
         headers=_headers(),
         timeout=30,
     )
-
     if response.status_code != 200:
         try:
             payload = response.json()
@@ -69,7 +66,6 @@ def _get_store_info(session: requests.Session, token: str, sticky: str | None) -
     )
     store_id = 0
     platform = PLATFORM
-
     if response.status_code == 200:
         try:
             data = response.json()
@@ -79,8 +75,24 @@ def _get_store_info(session: requests.Session, token: str, sticky: str | None) -
             platform = shop.get("platform") or data.get("platform") or PLATFORM
         except Exception:
             pass
-
     return store_id, platform
+
+
+def _lookup_vehicle(session: requests.Session, token: str, sticky: str | None, vin: str) -> dict:
+    """Look up a VIN and return the first matching vehicle record."""
+    response = session.get(
+        VEHICLE_LOOKUP,
+        params={"vin": vin},
+        headers=_headers(token, sticky),
+        timeout=30,
+    )
+    if response.status_code != 200:
+        return {}
+    if "application/json" not in response.headers.get("Content-Type", ""):
+        return {}
+    data = response.json()
+    vehicles = data if isinstance(data, list) else (data.get("vehicles") or data.get("results") or [])
+    return vehicles[0] if vehicles else {}
 
 
 def _collect_products(node: Any, query: str, found: list[dict]) -> None:
@@ -97,33 +109,19 @@ def _collect_products(node: Any, query: str, found: list[dict]) -> None:
                 price = float(value)
 
         brand = (
-            node.get("brandName")
-            or node.get("manufacturerName")
-            or node.get("description")
-            or node.get("partDescription")
-            or node.get("title")
-            or node.get("lineCode")
-            or query
+            node.get("brandName") or node.get("manufacturerName") or
+            node.get("description") or node.get("partDescription") or
+            node.get("title") or node.get("lineCode") or query
         )
         availability = (
-            node.get("availabilityText")
-            or node.get("availability")
-            or node.get("storeAvailability")
-            or "En tienda / In stock"
+            node.get("availabilityText") or node.get("availability") or
+            node.get("storeAvailability") or "En tienda / In stock"
         )
-
         if price and price > 0:
-            found.append(
-                {
-                    "brand": str(brand)[:80],
-                    "price": price,
-                    "eta": str(availability),
-                }
-            )
+            found.append({"brand": str(brand)[:80], "price": price, "eta": str(availability)})
 
         for value in node.values():
             _collect_products(value, query, found)
-
     elif isinstance(node, list):
         for item in node:
             _collect_products(item, query, found)
@@ -136,8 +134,25 @@ def _search_parts(
     query: str,
     store_number: int,
     platform: str,
+    vehicle: dict,
 ) -> list[dict]:
     headers = _headers(token, sticky)
+
+    # Build optional vehicle filter for requests that support it
+    vehicle_block: dict = {}
+    if vehicle:
+        base_vehicle_id = vehicle.get("vehicleId") or vehicle.get("baseVehicleId")
+        vehicle_id = vehicle.get("id") or vehicle.get("vehicleId")
+        engine_id = vehicle.get("engineId")
+        sub_model_id = vehicle.get("subModelId")
+        if base_vehicle_id or vehicle_id:
+            vehicle_block = {
+                "vehicleId": vehicle_id,
+                "baseVehicleId": base_vehicle_id,
+                **({"engineId": engine_id} if engine_id else {}),
+                **({"subModelId": sub_model_id} if sub_model_id else {}),
+            }
+
     endpoints = [
         (
             f"{SEARCH_BASE}/v2/searches/pre-process/products",
@@ -150,6 +165,7 @@ def _search_parts(
                     "sessionId": "1",
                     "query": query,
                     "storeNumber": store_number,
+                    **({"vehicle": vehicle_block} if vehicle_block else {}),
                 },
             },
         ),
@@ -170,6 +186,7 @@ def _search_parts(
                 "platform": platform,
                 "sessionId": "1",
                 "requestContext": {},
+                **({"vehicle": vehicle_block} if vehicle_block else {}),
             },
         ),
     ]
@@ -182,9 +199,7 @@ def _search_parts(
                 continue
             if "application/json" not in response.headers.get("Content-Type", ""):
                 continue
-
-            payload = response.json()
-            _collect_products(payload, query, collected)
+            _collect_products(response.json(), query, collected)
             if collected:
                 break
         except Exception:
@@ -209,19 +224,26 @@ def search_oreilly(
     store = "O'Reilly First Call"
     if not creds.configured:
         return SupplierSearchResult(store=store, error="Missing O'Reilly credentials in .env")
+    if not vin or len(vin) < 17:
+        return SupplierSearchResult(
+            store=store,
+            error="O'Reilly requires a VIN — enter the 17-digit VIN above before searching",
+        )
 
     session = requests.Session()
     try:
         token, sticky = _login(session, creds)
         if not token:
-            return SupplierSearchResult(store=store, error="O'Reilly login succeeded but no access token was returned")
+            return SupplierSearchResult(store=store, error="O'Reilly login succeeded but no access token returned")
 
         store_number, platform = _get_store_info(session, token, sticky)
-        rows = _search_parts(session, token, sticky, query, store_number, platform)
+        vehicle = _lookup_vehicle(session, token, sticky, vin)
+
+        rows = _search_parts(session, token, sticky, query, store_number, platform, vehicle)
         if not rows:
             return SupplierSearchResult(
                 store=store,
-                error="O'Reilly login worked but no priced results were found for that part",
+                error="O'Reilly: logged in and vehicle found but no priced results for that part",
             )
 
         parts = [
