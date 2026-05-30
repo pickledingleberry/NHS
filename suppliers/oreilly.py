@@ -127,6 +127,75 @@ def _collect_products(node: Any, query: str, found: list[dict]) -> None:
             _collect_products(item, query, found)
 
 
+def _build_vehicle_block(vehicle: dict) -> dict:
+    if not vehicle:
+        return {}
+    base_vehicle_id = vehicle.get("vehicleId") or vehicle.get("baseVehicleId")
+    vehicle_id = vehicle.get("id") or vehicle.get("vehicleId")
+    engine_id = vehicle.get("engineId")
+    sub_model_id = vehicle.get("subModelId")
+    if not (base_vehicle_id or vehicle_id):
+        return {}
+    return {
+        "vehicleId": vehicle_id,
+        "baseVehicleId": base_vehicle_id,
+        **({"engineId": engine_id} if engine_id else {}),
+        **({"subModelId": sub_model_id} if sub_model_id else {}),
+    }
+
+
+def _get_part_type_ids(
+    session: requests.Session,
+    headers: dict,
+    query: str,
+    store_number: int,
+    platform: str,
+    vehicle_block: dict,
+) -> list[str]:
+    """Step 1: Get part type IDs for a query via pre-process endpoint."""
+    body = {
+        "features": [{"type": "PART_TYPE_MATCHING"}],
+        "productSearchRequest": {
+            "pageSize": 5,
+            "marketId": MARKET_ID,
+            "platform": platform,
+            "sessionId": "1",
+            "query": query,
+            "storeNumber": store_number,
+            **({"vehicle": vehicle_block} if vehicle_block else {}),
+        },
+    }
+    try:
+        response = session.post(
+            f"{SEARCH_BASE}/v2/searches/pre-process/products",
+            json=body,
+            headers=headers,
+            timeout=30,
+        )
+        if response.status_code != 200:
+            return []
+        if "application/json" not in response.headers.get("Content-Type", ""):
+            return []
+        payload = response.json()
+        ids: list[str] = []
+        _collect_part_type_ids(payload, ids)
+        return ids[:5]
+    except Exception:
+        return []
+
+
+def _collect_part_type_ids(node: Any, ids: list[str]) -> None:
+    if isinstance(node, dict):
+        pt_id = node.get("partTypeId")
+        if pt_id:
+            ids.append(str(pt_id))
+        for value in node.values():
+            _collect_part_type_ids(value, ids)
+    elif isinstance(node, list):
+        for item in node:
+            _collect_part_type_ids(item, ids)
+
+
 def _search_parts(
     session: requests.Session,
     token: str,
@@ -137,73 +206,54 @@ def _search_parts(
     vehicle: dict,
 ) -> list[dict]:
     headers = _headers(token, sticky)
+    vehicle_block = _build_vehicle_block(vehicle)
 
-    # Build optional vehicle filter for requests that support it
-    vehicle_block: dict = {}
-    if vehicle:
-        base_vehicle_id = vehicle.get("vehicleId") or vehicle.get("baseVehicleId")
-        vehicle_id = vehicle.get("id") or vehicle.get("vehicleId")
-        engine_id = vehicle.get("engineId")
-        sub_model_id = vehicle.get("subModelId")
-        if base_vehicle_id or vehicle_id:
-            vehicle_block = {
-                "vehicleId": vehicle_id,
-                "baseVehicleId": base_vehicle_id,
-                **({"engineId": engine_id} if engine_id else {}),
-                **({"subModelId": sub_model_id} if sub_model_id else {}),
-            }
-
-    endpoints = [
-        (
-            f"{SEARCH_BASE}/v2/searches/pre-process/products",
-            {
-                "features": [{"type": "PART_TYPE_MATCHING"}],
-                "productSearchRequest": {
-                    "pageSize": 5,
-                    "marketId": MARKET_ID,
-                    "platform": platform,
-                    "sessionId": "1",
-                    "query": query,
-                    "storeNumber": store_number,
-                    **({"vehicle": vehicle_block} if vehicle_block else {}),
-                },
-            },
-        ),
-        (
-            f"{SEARCH_BASE}/v1/searches/item-number",
-            {"marketId": MARKET_ID, "size": 5, "query": query},
-        ),
-        (
-            f"{SEARCH_BASE}/v1/searches/products",
-            {
-                "features": [{"type": "FACET_MANUFACTURER_BRAND_NAMES_AND_CODES"}],
-                "resultOffset": 0,
-                "pageSize": 5,
-                "marketId": MARKET_ID,
-                "storeNumber": store_number,
-                "sorts": [],
-                "filters": [],
-                "platform": platform,
-                "sessionId": "1",
-                "requestContext": {},
-                **({"vehicle": vehicle_block} if vehicle_block else {}),
-            },
-        ),
-    ]
+    # Step 1: get part type IDs from pre-process
+    part_type_ids = _get_part_type_ids(session, headers, query, store_number, platform, vehicle_block)
 
     collected: list[dict] = []
-    for url, body in endpoints:
+
+    # Step 2a: if we got part type IDs, fetch real priced products by part type
+    if part_type_ids:
+        filters = [{"type": "PART_TYPE", "partTypeId": pid} for pid in part_type_ids]
+        body = {
+            "features": [{"type": "FACET_MANUFACTURER_BRAND_NAMES_AND_CODES"}],
+            "resultOffset": 0,
+            "pageSize": 5,
+            "marketId": MARKET_ID,
+            "storeNumber": store_number,
+            "sorts": [],
+            "filters": filters,
+            "platform": platform,
+            "sessionId": "1",
+            "requestContext": {},
+            **({"vehicle": vehicle_block} if vehicle_block else {}),
+        }
         try:
-            response = session.post(url, json=body, headers=headers, timeout=30)
-            if response.status_code != 200:
-                continue
-            if "application/json" not in response.headers.get("Content-Type", ""):
-                continue
-            _collect_products(response.json(), query, collected)
-            if collected:
-                break
+            response = session.post(
+                f"{SEARCH_BASE}/v1/searches/products",
+                json=body,
+                headers=headers,
+                timeout=30,
+            )
+            if response.status_code == 200 and "application/json" in response.headers.get("Content-Type", ""):
+                _collect_products(response.json(), query, collected)
         except Exception:
-            continue
+            pass
+
+    # Step 2b: fallback — search by item number (part number keyword)
+    if not collected:
+        try:
+            response = session.post(
+                f"{SEARCH_BASE}/v1/searches/item-number",
+                json={"marketId": MARKET_ID, "size": 5, "query": query},
+                headers=headers,
+                timeout=30,
+            )
+            if response.status_code == 200 and "application/json" in response.headers.get("Content-Type", ""):
+                _collect_products(response.json(), query, collected)
+        except Exception:
+            pass
 
     deduped: list[dict] = []
     seen: set[tuple[str, float]] = set()
