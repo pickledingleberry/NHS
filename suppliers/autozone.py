@@ -211,21 +211,55 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
 
     parsed: list[dict] = []
     for sku in result.get("skuRecords", []):
-        brand = sku.get("brandName") or sku.get("itemDescription", "")[:40]
         pna = sku.get("pna") or {}
         price = _extract_price_from_pna(pna)
         if not price:
             continue
+
+        brand = sku.get("brandName") or ""
+        description = sku.get("itemDescription") or sku.get("partGroupName") or ""
+        part_number = sku.get("partNumber") or ""
+        pricing = (pna.get("pricing") or {}).get("unformatted") or {}
+        list_price = float(pricing.get("list") or 0)
+
         avail = pna.get("availability") or {}
-        if avail.get("storeQuantity", 0) > 0:
+        store_qty = int(avail.get("storeQuantity") or 0)
+        total_qty = int(avail.get("combinedQuantity") or 0)
+        if store_qty > 0:
             eta = "En tienda / In stock"
         elif avail.get("hubQuantity", 0) > 0 or avail.get("vdpQuantity", 0) > 0:
-            eta = avail.get("deliveryDayAfterCutoff") or "Entrega / Delivery"
+            eta = avail.get("deliveryDayAfterCutoff") or "Entrega hoy / Delivery today"
         elif avail.get("dmQuantity", 0) > 0:
             eta = "Mañana / Tomorrow"
         else:
             eta = "Disponible / Available"
-        parsed.append({"brand": brand[:80], "price": price, "eta": eta})
+
+        # Product attributes (Position, Pad Type, Hardware Included, etc.)
+        attrs: dict = {}
+        position = ""
+        for attr in sku.get("productAttributes") or []:
+            label = attr.get("label") or ""
+            value = attr.get("value") or ""
+            if label and value:
+                attrs[label] = value
+                if label.lower() == "location":
+                    position = value
+
+        fits = (sku.get("vehicleFitment") or {}).get("vehicleFit") == "FITS"
+
+        parsed.append({
+            "brand": brand[:80],
+            "description": description[:100],
+            "part_number": part_number,
+            "price": price,
+            "list_price": list_price,
+            "eta": eta,
+            "store_qty": store_qty,
+            "total_qty": total_qty,
+            "position": position,
+            "attributes": attrs,
+            "fits_vehicle": fits,
+        })
 
     return parsed
 
@@ -341,7 +375,20 @@ def search_autozone(
                 if key in seen:
                     continue
                 seen.add(key)
-                parts.append(PartResult(store=store, brand=row["brand"], price=row["price"], eta=row["eta"]))
+                parts.append(PartResult(
+                store=store,
+                brand=row["brand"],
+                description=row.get("description", ""),
+                part_number=row.get("part_number", ""),
+                price=row["price"],
+                list_price=row.get("list_price", 0.0),
+                eta=row["eta"],
+                store_qty=row.get("store_qty", 0),
+                total_qty=row.get("total_qty", 0),
+                position=row.get("position", ""),
+                attributes=row.get("attributes", {}),
+                fits_vehicle=row.get("fits_vehicle", False),
+            ))
                 if len(parts) >= 5:
                     break
 

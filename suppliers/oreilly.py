@@ -207,30 +207,55 @@ def _parse_enterprise_products(data: dict) -> list[dict]:
         ppar = item.get("partPriceAvailabilityResponse") or {}
         price_block = ppar.get("price") or {}
         cost = price_block.get("itemCost")
-        list_price = price_block.get("listPrice")
+        list_price_val = price_block.get("listPrice")
         price = float(cost) if isinstance(cost, (int, float)) and cost > 0 else None
-        if not price and isinstance(list_price, (int, float)) and list_price > 0:
-            price = float(list_price)
+        if not price and isinstance(list_price_val, (int, float)) and list_price_val > 0:
+            price = float(list_price_val)
         if not price:
             continue
 
         product = item.get("product") or {}
-        brand = product.get("brandName") or product.get("manufacturerName") or item.get("displayName", "")
-        if not brand:
-            brand = (item.get("itemDescription") or "")[:60]
+        brand = (product.get("brandName") or product.get("manufacturerName") or item.get("displayName", ""))[:80]
+        description = (product.get("name") or product.get("shortDescription") or item.get("itemDescription") or "")[:100]
+        part_number = item.get("displayItemNumber") or product.get("partNumberDisplay") or ""
+        list_price = float(list_price_val) if isinstance(list_price_val, (int, float)) and list_price_val > 0 else 0.0
 
-        # Availability from partAvailabilityList
+        # Availability
         avail_list = ppar.get("partAvailabilityList") or []
-        if any(a.get("locationType") == "STORE" and a.get("quantityOnHand", 0) > 0 for a in avail_list):
+        store_qty = sum(a.get("quantityOnHand", 0) for a in avail_list if a.get("locationType") == "STORE")
+        hub_qty = sum(a.get("quantityOnHand", 0) for a in avail_list if a.get("locationType") == "HUB")
+        total_qty = sum(a.get("quantityOnHand", 0) for a in avail_list)
+        if store_qty > 0:
             eta = "En tienda / In stock"
-        elif any(a.get("locationType") == "HUB" and a.get("quantityOnHand", 0) > 0 for a in avail_list):
+        elif hub_qty > 0:
             eta = "Hub — 1 hr"
         elif avail_list:
             eta = "Entrega / Delivery"
         else:
             eta = "Disponible / Available"
 
-        results.append({"brand": str(brand)[:80], "price": price, "eta": eta})
+        # Attributes (position, pad type, etc.)
+        attrs: dict = {}
+        position = item.get("location") or ""
+        for attr in product.get("productAttributes") or []:
+            label = attr.get("description") or ""
+            values = attr.get("values") or []
+            if label and values:
+                attrs[label] = values[0].get("displayDescription") or values[0].get("valueDescription") or ""
+
+        results.append({
+            "brand": brand,
+            "description": description,
+            "part_number": part_number,
+            "price": price,
+            "list_price": list_price,
+            "eta": eta,
+            "store_qty": store_qty,
+            "total_qty": total_qty,
+            "position": position,
+            "attributes": attrs,
+            "fits_vehicle": item.get("applicationStatus") == "VERIFIED",
+        })
 
     return results
 
@@ -295,7 +320,20 @@ def search_oreilly(
             if key in seen:
                 continue
             seen.add(key)
-            parts.append(PartResult(store=store, brand=row["brand"], price=row["price"], eta=row["eta"]))
+            parts.append(PartResult(
+                store=store,
+                brand=row["brand"],
+                description=row.get("description", ""),
+                part_number=row.get("part_number", ""),
+                price=row["price"],
+                list_price=row.get("list_price", 0.0),
+                eta=row["eta"],
+                store_qty=row.get("store_qty", 0),
+                total_qty=row.get("total_qty", 0),
+                position=row.get("position", ""),
+                attributes=row.get("attributes", {}),
+                fits_vehicle=row.get("fits_vehicle", False),
+            ))
             if len(parts) >= 5:
                 break
 

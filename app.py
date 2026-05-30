@@ -474,13 +474,47 @@ def render_quote():
 
                     for item in display_items:
                         is_best = item.price == scraped_data[0].price
-                        css_class = "part-result best" if is_best else "part-result"
+                        border_color = "#059669" if is_best else "#2563eb"
+                        badge_html = ""
+                        if item.fits_vehicle:
+                            badge_html = '<span style="background:#16a34a;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:6px;">Fits Vehicle</span>'
+                        if is_best and not show_cheapest:
+                            badge_html += '<span style="background:#f59e0b;color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;">Mejor precio</span>'
+
+                        pos_html = f'<span style="background:#e5e7eb;color:#374151;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:4px;">{item.position}</span>' if item.position else ""
+
+                        attrs_html = ""
+                        for k, v in (item.attributes or {}).items():
+                            attrs_html += f'<span style="color:#6b7280;font-size:0.85em;">{k}: <strong>{v}</strong> &nbsp; </span>'
+
+                        list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.9em;margin-left:8px;">Lista: ${item.list_price:.2f}</span>' if item.list_price > item.price else ""
+
+                        avail_html = ""
+                        if item.store_qty > 0:
+                            avail_html = f'<span style="color:#16a34a;font-size:0.85em;font-weight:600;">{item.store_qty} En tienda</span>'
+                        if item.total_qty > 0:
+                            avail_html += f'<span style="color:#6b7280;font-size:0.85em;margin-left:8px;">{item.total_qty} total disponible</span>'
+
+                        part_num_html = f'<span style="color:#6b7280;font-size:0.85em;">Part #: <strong>{item.part_number}</strong></span>' if item.part_number else ""
+
                         st.markdown(
                             f"""
-                            <div class="{css_class}">
-                                <strong>{item.store}</strong> — <em>{item.brand}</em><br>
-                                {T['price']}: <strong>${item.price:.2f}</strong> &nbsp;|&nbsp;
-                                {T['stock']}: {item.eta}
+                            <div style="border-left:4px solid {border_color};border-radius:12px;background:white;padding:16px 20px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+                                <div style="margin-bottom:6px;">{badge_html}{pos_html}</div>
+                                <div style="font-size:1.15em;font-weight:700;color:#111827;margin-bottom:2px;">{item.brand} {item.description}</div>
+                                <div style="margin-bottom:8px;">{part_num_html}</div>
+                                <div style="margin-bottom:8px;">{attrs_html}</div>
+                                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                                    <div>
+                                        <span style="font-size:1.6em;font-weight:800;color:{border_color};">${item.price:.2f}</span>
+                                        {list_html}
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <div style="font-weight:600;color:#374151;">{item.store}</div>
+                                        <div>{avail_html}</div>
+                                        <div style="color:#6b7280;font-size:0.85em;">{item.eta}</div>
+                                    </div>
+                                </div>
                             </div>
                             """,
                             unsafe_allow_html=True,
