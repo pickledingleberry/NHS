@@ -747,65 +747,65 @@ def render_quote():
                                         st.session_state.selected_idx = global_idx
                                         st.rerun()
 
-                    # ---- QUOTE TOTALS ----
-                    sel_idx = st.session_state.selected_idx
-                    if sel_idx >= len(scraped_data):
-                        sel_idx = 0
-                        st.session_state.selected_idx = 0
-                    chosen_part = scraped_data[sel_idx] if scraped_data else display_items[0]
-                    st.info(f"Cotizando con / Quoting: **{chosen_part.brand} {chosen_part.description}** — ${chosen_part.price:.2f} ({chosen_part.store})")
-                    chosen_part_cost = chosen_part.price
-                    parts_markup = chosen_part_cost * 1.30
-                    calculated_labor = labor_hours * 100.00
-                    subtotal = parts_markup + calculated_labor
+            # ---- QUOTE TOTALS ----
+            sel_idx = st.session_state.selected_idx
+            if sel_idx >= len(scraped_data):
+                sel_idx = 0
+                st.session_state.selected_idx = 0
+            chosen_part = scraped_data[sel_idx] if scraped_data else display_items[0]
+            st.info(f"Cotizando con / Quoting: **{chosen_part.brand} {chosen_part.description}** — ${chosen_part.price:.2f} ({chosen_part.store})")
+            chosen_part_cost = chosen_part.price
+            parts_markup = chosen_part_cost * 1.30
+            calculated_labor = labor_hours * 100.00
+            subtotal = parts_markup + calculated_labor
 
-                    # Discount
-                    if discount_type == T["discount_type_pct"]:
-                        discount_amount = subtotal * (discount_val / 100.0)
-                    else:
-                        discount_amount = float(discount_val)
-                    after_discount = max(0.0, subtotal - discount_amount)
+            # Discount
+            if discount_type == T["discount_type_pct"]:
+                discount_amount = subtotal * (discount_val / 100.0)
+            else:
+                discount_amount = float(discount_val)
+            after_discount = max(0.0, subtotal - discount_amount)
 
-                    # Tax
-                    tax_amount = after_discount * (tax_rate / 100.0)
-                    grand_total = after_discount + tax_amount
+            # Tax
+            tax_amount = after_discount * (tax_rate / 100.0)
+            grand_total = after_discount + tax_amount
 
-                    # ProVantage badge
-                    st.markdown(
-                        """
-                        <div style="background:linear-gradient(90deg,#1e3a8a,#2563eb);border-radius:10px;padding:12px 18px;margin:16px 0 8px;display:flex;align-items:center;gap:14px;">
-                            <div style="font-size:2em;">🏆</div>
-                            <div>
-                                <div style="color:#fbbf24;font-weight:800;font-size:1em;">ProVantage Auto Repair Network</div>
-                                <div style="color:white;font-size:0.85em;">Garantía Extendida Incluida — Válida en Todo el País</div>
-                                <div style="color:#93c5fd;font-size:0.78em;">Extended Nationwide Warranty Included on this Quote</div>
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+            # ProVantage badge
+            st.markdown(
+                """
+                <div style="background:linear-gradient(90deg,#1e3a8a,#2563eb);border-radius:10px;padding:12px 18px;margin:16px 0 8px;display:flex;align-items:center;gap:14px;">
+                    <div style="font-size:2em;">🏆</div>
+                    <div>
+                        <div style="color:#fbbf24;font-weight:800;font-size:1em;">ProVantage Auto Repair Network</div>
+                        <div style="color:white;font-size:0.85em;">Garantía Extendida Incluida — Válida en Todo el País</div>
+                        <div style="color:#93c5fd;font-size:0.78em;">Extended Nationwide Warranty Included on this Quote</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-                    st.markdown(f"### {T['summary']}")
-                    col_l, col_r = st.columns(2)
-                    with col_l:
-                        st.metric(T["parts_line"], f"${parts_markup:.2f}")
-                        st.metric(f"{T['labor_line']} ({labor_hours} hrs)", f"${calculated_labor:.2f}")
-                        if discount_amount > 0:
-                            st.metric(f"- {T['discount_line']}", f"-${discount_amount:.2f}", delta_color="inverse")
-                        if tax_amount > 0:
-                            st.metric(f"+ {T['tax_line']} ({tax_rate:.2f}%)", f"${tax_amount:.2f}")
-                    with col_r:
-                        st.markdown(
-                            f"""
-                            <div class="total-box">
-                                <div class="label">{T['total']}</div>
-                                <div class="amount">${grand_total:.2f}</div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown(f"**{T['square_total']}** `${grand_total:.2f}`")
-                        st.button(T["square_btn"], key="pay_with_square_button", use_container_width=True)
+            st.markdown(f"### {T['summary']}")
+            col_l, col_r = st.columns(2)
+            with col_l:
+                st.metric(T["parts_line"], f"${parts_markup:.2f}")
+                st.metric(f"{T['labor_line']} ({labor_hours} hrs)", f"${calculated_labor:.2f}")
+                if discount_amount > 0:
+                    st.metric(f"- {T['discount_line']}", f"-${discount_amount:.2f}", delta_color="inverse")
+                if tax_amount > 0:
+                    st.metric(f"+ {T['tax_line']} ({tax_rate:.2f}%)", f"${tax_amount:.2f}")
+            with col_r:
+                st.markdown(
+                    f"""
+                    <div class="total-box">
+                        <div class="label">{T['total']}</div>
+                        <div class="amount">${grand_total:.2f}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.markdown(f"**{T['square_total']}** `${grand_total:.2f}`")
+                st.button(T["square_btn"], key="pay_with_square_button", use_container_width=True)
 
 
 def render_help():
