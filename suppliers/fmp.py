@@ -24,7 +24,7 @@ def search_fmp(
     try:
         with browser_page() as page:
             safe_goto(page, "https://fmp-delivers.dstcloud.com/#/login")
-            page.wait_for_timeout(4000)
+            page.wait_for_timeout(2000)
             dismiss_overlays(page)
 
             if not wait_for_any(
@@ -34,6 +34,7 @@ def search_fmp(
                     'input[name="userID"]',
                     'input[type="password"]',
                 ],
+                timeout_ms=10000,
             ):
                 return SupplierSearchResult(store=store, error="FMP login page did not load correctly")
 
@@ -69,7 +70,7 @@ def search_fmp(
                     'button:has-text("Sign In")',
                 ],
             )
-            page.wait_for_timeout(7000)
+            page.wait_for_timeout(4000)
 
             if "login" in page.url.lower():
                 return SupplierSearchResult(store=store, error="FMP login failed — check FMP_USER / FMP_PASS")
@@ -85,7 +86,7 @@ def search_fmp(
                 return SupplierSearchResult(store=store, error="Could not find FMP search box")
 
             page.keyboard.press("Enter")
-            page.wait_for_timeout(6000)
+            page.wait_for_timeout(3000)
 
             rows = page.locator("tr, [class*='result'], [class*='part'], li, article")
             parsed: list[dict] = []

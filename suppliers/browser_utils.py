@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
 
-DEFAULT_TIMEOUT_MS = 60000
+DEFAULT_TIMEOUT_MS = 25000
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -16,6 +16,7 @@ CHROMIUM_ARGS = [
     "--disable-blink-features=AutomationControlled",
     "--no-sandbox",
     "--disable-dev-shm-usage",
+    "--blink-settings=imagesEnabled=false",  # Speed up: don't load images
 ]
 
 
@@ -33,10 +34,20 @@ def browser_page(headless: bool = True, engine: str = "chromium"):
 
     context: BrowserContext = browser.new_context(
         user_agent=USER_AGENT,
-        viewport={"width": 1366, "height": 900},
+        viewport={"width": 1280, "height": 800},
         locale="en-US",
         ignore_https_errors=True,
     )
+    # block unnecessary scripts to save time and bandwidth
+    context.route(
+        "**/*.{png,jpg,jpeg,gif,webp,svg,mp4,webm,woff,woff2,ttf,eot}",
+        lambda route: route.abort(),
+    )
+    context.route(
+        re.compile(r"google-analytics|doubleclick|analytics|gtm|newrelic|hotjar", re.I),
+        lambda route: route.abort(),
+    )
+
     context.add_init_script(
         "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
     )
@@ -52,38 +63,17 @@ def browser_page(headless: bool = True, engine: str = "chromium"):
 
 def safe_goto(page: Page, url: str) -> None:
     last_error: Exception | None = None
-    for wait_until in ("domcontentloaded", "commit"):
+    for wait_until in ("commit", "domcontentloaded"):
         try:
-            page.goto(url, wait_until=wait_until, timeout=60000)
-            page.wait_for_load_state("domcontentloaded", timeout=30000)
+            page.goto(url, wait_until=wait_until, timeout=20000)
             return
         except Exception as exc:
             last_error = exc
-            page.wait_for_timeout(1500)
     if last_error:
         raise last_error
 
 
 def dismiss_overlays(page: Page) -> None:
-    cookie_selectors = [
-        "#onetrust-accept-btn-handler",
-        'button:has-text("Accept All Cookies")',
-        'button:has-text("Accept All")',
-        'button:has-text("Allow All")',
-        'button:has-text("I Accept")',
-        'button:has-text("Agree")',
-        'button:has-text("Confirm")',
-    ]
-    for selector in cookie_selectors:
-        try:
-            button = page.locator(selector).first
-            if button.count() and button.is_visible():
-                button.click(timeout=4000)
-                page.wait_for_timeout(800)
-                break
-        except Exception:
-            continue
-
     page.evaluate(
         """
         () => {
@@ -91,6 +81,8 @@ def dismiss_overlays(page: Page) -> None:
                 '#onetrust-consent-sdk',
                 '.onetrust-pc-dark-filter',
                 '#onetrust-banner-sdk',
+                '.cookie-consent',
+                '#cookie-banner',
             ]) {
                 document.querySelectorAll(selector).forEach((node) => node.remove());
             }
@@ -104,10 +96,13 @@ def fill_first(page: Page, selectors: list[str], value: str) -> bool:
         locator = page.locator(selector)
         if locator.count() == 0:
             continue
-        field = locator.first
-        field.click(timeout=5000)
-        field.fill(value)
-        return True
+        try:
+            field = locator.first
+            field.click(timeout=3000)
+            field.fill(value)
+            return True
+        except Exception:
+            continue
     return False
 
 
@@ -119,7 +114,7 @@ def click_first(page: Page, selectors: list[str], force: bool = False) -> bool:
             continue
         for use_force in (force, True) if not force else (True,):
             try:
-                locator.first.click(timeout=10000, force=use_force)
+                locator.first.click(timeout=4000, force=use_force)
                 return True
             except Exception:
                 continue
@@ -137,7 +132,7 @@ def submit_login(page: Page, button_selectors: list[str]) -> bool:
         return False
 
 
-def wait_for_any(page: Page, selectors: list[str], timeout_ms: int = 20000) -> bool:
+def wait_for_any(page: Page, selectors: list[str], timeout_ms: int = 10000) -> bool:
     for selector in selectors:
         try:
             page.wait_for_selector(selector, timeout=timeout_ms)

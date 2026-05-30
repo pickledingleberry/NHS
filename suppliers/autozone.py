@@ -27,7 +27,7 @@ def search_autozone(
         return SupplierSearchResult(store=store, error="Missing AutoZone credentials in .env")
 
     last_error = "AutoZone login page could not be loaded"
-    engines = ("chromium", "firefox")
+    engines = ("chromium",)  # default back to fast chromium first
 
     for engine in engines:
         try:
@@ -45,7 +45,7 @@ def search_autozone(
                     continue
 
                 dismiss_overlays(page)
-                page.wait_for_timeout(1500)
+                page.wait_for_timeout(1000)
 
                 if not wait_for_any(
                     page,
@@ -54,6 +54,7 @@ def search_autozone(
                         'input[id*="username"]',
                         'input[type="text"]',
                     ],
+                    timeout_ms=10000,
                 ):
                     continue
 
@@ -89,7 +90,7 @@ def search_autozone(
                         'button[type="submit"]',
                     ],
                 )
-                page.wait_for_timeout(6000)
+                page.wait_for_timeout(3000)
 
                 if "login" in page.url.lower():
                     return SupplierSearchResult(store=store, error="AutoZone login failed — check AZ_USER / AZ_PASS")
@@ -104,7 +105,7 @@ def search_autozone(
                     return SupplierSearchResult(store=store, error="Could not find AutoZone search box")
 
                 page.keyboard.press("Enter")
-                page.wait_for_timeout(6000)
+                page.wait_for_timeout(3000)
 
                 cards = page.locator(
                     '[data-testid*="product"], [class*="product"], [class*="part"], article, li'
