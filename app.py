@@ -1,6 +1,9 @@
 import streamlit as st
 import requests
 
+from config import get_config
+from suppliers.engine import search_all_suppliers
+
 st.set_page_config(
     page_title="Taller del Barrio",
     layout="wide",
@@ -47,6 +50,10 @@ TEXT = {
         "btn_search": "Buscar Precios y Calcular Total",
         "searching": "Buscando en tiendas de refacciones...",
         "need_part": "Por favor escriba qué pieza necesita.",
+        "env_missing": "Faltan credenciales en el archivo .env. Agregue sus usuarios y contraseñas de AutoZone, FMP y O'Reilly.",
+        "no_results": "No se encontraron precios. Revise la pieza o las credenciales del proveedor.",
+        "supplier_errors": "Avisos de proveedores:",
+        "suppliers_ready": "Proveedores listos:",
         "cheapest": "¡LA MÁS BARATA!",
         "price": "Precio",
         "stock": "Disponible",
@@ -100,6 +107,10 @@ TEXT = {
         "btn_search": "Find Prices & Calculate Total",
         "searching": "Searching parts stores...",
         "need_part": "Please enter a part name.",
+        "env_missing": "Missing credentials in .env. Add your AutoZone, FMP, and O'Reilly logins.",
+        "no_results": "No prices found. Check the part name or supplier credentials.",
+        "supplier_errors": "Supplier notices:",
+        "suppliers_ready": "Suppliers ready:",
         "cheapest": "CHEAPEST OPTION!",
         "price": "Price",
         "stock": "Availability",
@@ -402,6 +413,12 @@ def decode_vin(vin):
 
 
 def render_quote():
+    config = get_config()
+    if config.any_configured:
+        st.caption(f"{T['suppliers_ready']} {' · '.join(config.status_lines())}")
+    else:
+        st.warning(T["env_missing"])
+
     st.markdown(f'<span class="step-badge">{T["step1"]}</span>', unsafe_allow_html=True)
     vin_in = st.text_input(T["vin_lbl"], max_chars=17, placeholder="1HGBH41JXMN109186").upper()
     st.markdown(f'<p class="hint">{T["vin_hint"]}</p>', unsafe_allow_html=True)
@@ -434,55 +451,63 @@ def render_quote():
             st.warning(T["need_part"])
         else:
             with st.spinner(T["searching"]):
-                scraped_data = [
-                    {"store": "Factory Motor Parts (FMP)", "brand": "ACDelco Professional", "price": 85.00, "eta": "20 min"},
-                    {"store": "AutoZone Pro", "brand": "Duralast Gold", "price": 92.50, "eta": "En tienda / In stock"},
-                    {"store": "O'Reilly First Call", "brand": "Brakebest Select", "price": 79.99, "eta": "Mañana / Tomorrow"},
-                ]
-                scraped_data.sort(key=lambda x: x["price"])
-                display_items = [scraped_data[0]] if show_cheapest else scraped_data
+                scraped_data, supplier_errors = search_all_suppliers(
+                    part_in.strip(),
+                    vin=vin_in if len(vin_in) == 17 else None,
+                    config=config,
+                )
 
-                st.markdown(f'<span class="step-badge">{T["step3"]}</span>', unsafe_allow_html=True)
+                if supplier_errors:
+                    with st.expander(T["supplier_errors"], expanded=not scraped_data):
+                        for message in supplier_errors:
+                            st.write(f"- {message}")
 
-                if show_cheapest:
-                    st.markdown(f"### {T['cheapest']}")
+                if not scraped_data:
+                    st.error(T["no_results"])
+                else:
+                    display_items = [scraped_data[0]] if show_cheapest else scraped_data
 
-                for item in display_items:
-                    is_best = item["price"] == scraped_data[0]["price"]
-                    css_class = "part-result best" if is_best else "part-result"
-                    st.markdown(
-                        f"""
-                        <div class="{css_class}">
-                            <strong>{item['store']}</strong> — <em>{item['brand']}</em><br>
-                            {T['price']}: <strong>${item['price']:.2f}</strong> &nbsp;|&nbsp;
-                            {T['stock']}: {item['eta']}
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                    st.markdown(f'<span class="step-badge">{T["step3"]}</span>', unsafe_allow_html=True)
 
-                chosen_part_cost = display_items[0]["price"]
-                parts_markup = chosen_part_cost * 1.30
-                calculated_labor = labor_hours * 100.00
-                grand_total = parts_markup + calculated_labor
+                    if show_cheapest:
+                        st.markdown(f"### {T['cheapest']}")
 
-                st.markdown(f"### {T['summary']}")
-                col_l, col_r = st.columns(2)
-                with col_l:
-                    st.metric(T["parts_line"], f"${parts_markup:.2f}")
-                    st.metric(f"{T['labor_line']} ({labor_hours} hrs)", f"${calculated_labor:.2f}")
-                with col_r:
-                    st.markdown(
-                        f"""
-                        <div class="total-box">
-                            <div class="label">{T['total']}</div>
-                            <div class="amount">${grand_total:.2f}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    st.markdown(f"**{T['square_total']}** `${grand_total:.2f}`")
-                    st.button(T["square_btn"], use_container_width=True)
+                    for item in display_items:
+                        is_best = item.price == scraped_data[0].price
+                        css_class = "part-result best" if is_best else "part-result"
+                        st.markdown(
+                            f"""
+                            <div class="{css_class}">
+                                <strong>{item.store}</strong> — <em>{item.brand}</em><br>
+                                {T['price']}: <strong>${item.price:.2f}</strong> &nbsp;|&nbsp;
+                                {T['stock']}: {item.eta}
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+                    chosen_part_cost = display_items[0].price
+                    parts_markup = chosen_part_cost * 1.30
+                    calculated_labor = labor_hours * 100.00
+                    grand_total = parts_markup + calculated_labor
+
+                    st.markdown(f"### {T['summary']}")
+                    col_l, col_r = st.columns(2)
+                    with col_l:
+                        st.metric(T["parts_line"], f"${parts_markup:.2f}")
+                        st.metric(f"{T['labor_line']} ({labor_hours} hrs)", f"${calculated_labor:.2f}")
+                    with col_r:
+                        st.markdown(
+                            f"""
+                            <div class="total-box">
+                                <div class="label">{T['total']}</div>
+                                <div class="amount">${grand_total:.2f}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(f"**{T['square_total']}** `${grand_total:.2f}`")
+                        st.button(T["square_btn"], use_container_width=True)
 
 
 def render_help():
