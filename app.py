@@ -626,11 +626,19 @@ def render_quote():
                             }
                             border_color = supplier_colors.get(item.store, "#6b7280")
 
+                            # Dim cards for unavailable or non-fitting parts
+                            has_vin = vin_in and len(vin_in) == 17 and car_info
+                            card_opacity = "0.45" if not item.available else ("0.7" if has_vin and not item.fits_vehicle else "1")
+
                             badge_html = f'<span style="background:{border_color};color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;font-weight:700;margin-right:5px;">{item.store}</span>'
                             if item.fits_vehicle:
                                 badge_html += '<span style="background:#16a34a;color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">Fits Vehicle</span>'
+                            elif has_vin and not item.fits_vehicle:
+                                badge_html += '<span style="background:#ef4444;color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">No encaja / Does not fit</span>'
                             if item.store_qty > 0:
                                 badge_html += '<span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">En Tienda</span>'
+                            if not item.available:
+                                badge_html += '<span style="background:#f3f4f6;color:#6b7280;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">Sin stock / Unavailable</span>'
                             if is_best and not show_cheapest:
                                 badge_html += '<span style="background:#f59e0b;color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;">Mejor precio</span>'
 
@@ -657,7 +665,7 @@ def render_quote():
                             with col:
                                 st.markdown(
                                     f"""
-                                    <div style="border-left:4px solid {border_color};border-radius:10px;background:white;padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);height:100%;">
+                                    <div style="border-left:4px solid {border_color};border-radius:10px;background:white;padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);height:100%;opacity:{card_opacity};">
                                         <div style="display:flex;align-items:flex-start;">
                                             {img_tag}
                                             <div style="flex:1;min-width:0;">

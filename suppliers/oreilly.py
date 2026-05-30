@@ -224,15 +224,26 @@ def _parse_enterprise_products(data: dict) -> list[dict]:
         avail_list = ppar.get("partAvailabilityList") or []
         store_qty = sum(a.get("quantityOnHand", 0) for a in avail_list if a.get("locationType") == "STORE")
         hub_qty = sum(a.get("quantityOnHand", 0) for a in avail_list if a.get("locationType") == "HUB")
+        dc_qty = sum(a.get("quantityOnHand", 0) for a in avail_list if a.get("locationType") == "DISTRIBUTION_CENTER")
         total_qty = sum(a.get("quantityOnHand", 0) for a in avail_list)
+
         if store_qty > 0:
             eta = "En tienda / In stock"
+            avail_score = 3
         elif hub_qty > 0:
-            eta = "Hub — 1 hr"
-        elif avail_list:
-            eta = "Entrega / Delivery"
+            eta = "Hub — ~1 hr"
+            avail_score = 2
+        elif dc_qty > 0:
+            eta = "Mañana / Tomorrow"
+            avail_score = 2
+        elif total_qty > 0:
+            eta = "Entrega estimada / Est. delivery"
+            avail_score = 1
         else:
-            eta = "Disponible / Available"
+            eta = "Consulte disponibilidad / Call"
+            avail_score = 0
+
+        available = total_qty > 0
 
         # Attributes (position, pad type, etc.)
         attrs: dict = {}
@@ -261,6 +272,8 @@ def _parse_enterprise_products(data: dict) -> list[dict]:
             "attributes": attrs,
             "fits_vehicle": item.get("applicationStatus") == "VERIFIED",
             "image_url": image_url,
+            "available": available,
+            "avail_score": avail_score,
         })
 
     return results
@@ -340,6 +353,8 @@ def search_oreilly(
                 attributes=row.get("attributes", {}),
                 fits_vehicle=row.get("fits_vehicle", False),
                 image_url=row.get("image_url", ""),
+                available=row.get("available", True),
+                avail_score=row.get("avail_score", 0),
             ))
             if len(parts) >= 20:
                 break

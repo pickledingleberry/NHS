@@ -16,6 +16,8 @@ class PartResult:
     attributes: dict = field(default_factory=dict)
     fits_vehicle: bool = False
     image_url: str = ""
+    available: bool = True       # False = no real stock / call for estimate
+    avail_score: int = 0         # 3=store, 2=hub/dm, 1=network, 0=none
 
 
 @dataclass

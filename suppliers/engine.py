@@ -46,17 +46,39 @@ def search_all_suppliers(
 
 
 def _brand_diverse_sort(parts: list[PartResult]) -> list[PartResult]:
-    """Interleave brands so the list shows variety instead of one brand repeated.
-    Within each brand, sort cheapest first. Brands ordered by their cheapest option."""
+    """Sort rules (in priority order):
+    1. Parts that fit the vehicle come before parts that don't
+    2. Available parts before unavailable (avail_score desc)
+    3. Among equal priority: brand diversity (cheapest of each brand interleaved)
+    """
+    def sort_tier(p: PartResult) -> int:
+        if not p.available:
+            return 2           # unavailable — always last
+        if not p.fits_vehicle and p.store_qty == 0 and p.total_qty < 5:
+            return 1           # low-confidence fit + low stock — middle
+        return 0               # good: available and fits (or universal)
+
+    # Split into tiers
+    tiers: dict[int, list[PartResult]] = {0: [], 1: [], 2: []}
+    for p in parts:
+        tiers[sort_tier(p)].append(p)
+
+    result: list[PartResult] = []
+    for tier_num in (0, 1, 2):
+        result.extend(_interleave_brands(tiers[tier_num]))
+    return result
+
+
+def _interleave_brands(parts: list[PartResult]) -> list[PartResult]:
     by_brand: dict[str, list[PartResult]] = {}
     for p in parts:
         key = p.brand or "Other"
         by_brand.setdefault(key, []).append(p)
 
     for brand in by_brand:
-        by_brand[brand].sort(key=lambda x: (x.price, 0 if x.store_qty > 0 else 1))
+        by_brand[brand].sort(key=lambda x: (-(x.avail_score), x.price))
 
-    brands_ordered = sorted(by_brand.keys(), key=lambda b: by_brand[b][0].price)
+    brands_ordered = sorted(by_brand.keys(), key=lambda b: (-(by_brand[b][0].avail_score), by_brand[b][0].price))
     max_len = max(len(v) for v in by_brand.values()) if by_brand else 0
 
     diverse: list[PartResult] = []

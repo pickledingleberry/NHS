@@ -245,15 +245,28 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
 
         avail = pna.get("availability") or {}
         store_qty = int(avail.get("storeQuantity") or 0)
+        hub_qty = int(avail.get("hubQuantity") or avail.get("vdpQuantity") or 0)
+        dm_qty = int(avail.get("dmQuantity") or 0)
+        network_qty = int(avail.get("networkQuantity") or 0)
         total_qty = int(avail.get("combinedQuantity") or 0)
+
         if store_qty > 0:
             eta = "En tienda / In stock"
-        elif avail.get("hubQuantity", 0) > 0 or avail.get("vdpQuantity", 0) > 0:
-            eta = avail.get("deliveryDayAfterCutoff") or "Entrega hoy / Delivery today"
-        elif avail.get("dmQuantity", 0) > 0:
-            eta = "Mañana / Tomorrow"
+            avail_score = 3
+        elif hub_qty > 0:
+            eta = avail.get("deliveryDayAfterCutoff") or "Entrega hoy / Today"
+            avail_score = 2
+        elif dm_qty > 0:
+            eta = avail.get("deliveryDayAfterCutoff") or "Mañana / Tomorrow"
+            avail_score = 2
+        elif network_qty > 0:
+            eta = "Entrega estimada / Est. delivery"
+            avail_score = 1
         else:
-            eta = "Disponible / Available"
+            eta = "Consulte disponibilidad / Call"
+            avail_score = 0
+
+        available = total_qty > 0
 
         # Product attributes (Position, Pad Type, Hardware Included, etc.)
         attrs: dict = {}
@@ -273,7 +286,12 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
 
         position = " / ".join(position_parts) if position_parts else ""
 
-        fits = (sku.get("vehicleFitment") or {}).get("vehicleFit") == "FITS"
+        fitment = sku.get("vehicleFitment") or {}
+        vehicle_fit = fitment.get("vehicleFit") or ""
+        fits = vehicle_fit in ("FITS",)
+        does_not_fit = vehicle_fit in ("NOT_FITS", "DOES_NOT_FIT", "DOESNOTFIT")
+        is_universal = fitment.get("vehicleFitmentLabel") == "UNIVERSAL"
+
         image_url = sku.get("productImageUrl") or ""
 
         parsed.append({
@@ -287,7 +305,10 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
             "total_qty": total_qty,
             "position": position,
             "attributes": attrs,
-            "fits_vehicle": fits,
+            "fits_vehicle": fits or is_universal,
+            "does_not_fit": does_not_fit,
+            "available": available,
+            "avail_score": avail_score,
             "image_url": image_url,
         })
 
@@ -419,6 +440,8 @@ def search_autozone(
                 attributes=row.get("attributes", {}),
                 fits_vehicle=row.get("fits_vehicle", False),
                 image_url=row.get("image_url", ""),
+                available=row.get("available", True),
+                avail_score=row.get("avail_score", 0),
             ))
                 if len(parts) >= 20:
                     break
