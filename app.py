@@ -111,6 +111,42 @@ TEXT = {
         "help_tip": "Consejo: Si no sabe el VIN, pídale al cliente que lo busque en su seguro o tarjeta de registro.",
         "lang_btn": "English",
         "footer": "Hecho con cariño para el taller de la familia",
+        # Sidebar
+        "sidebar_title": "⚙️ Configuración del Taller",
+        "sidebar_labor": "Horas de mano de obra",
+        "sidebar_tax": "Impuesto (%)",
+        "sidebar_discount": "Descuento",
+        "sidebar_discount_pct": "Porcentaje (%)",
+        "sidebar_discount_fixed": "Monto fijo ($)",
+        "sidebar_cheapest": "Solo opción más barata",
+        "sidebar_fitment": "Solo piezas garantizadas",
+        "sidebar_status": "Estado de Proveedores",
+        "sidebar_connected": "Conectado",
+        "sidebar_not_configured": "Sin configurar",
+        # Results
+        "top_recs_title": "Recomendaciones Principales",
+        "quick_search_hint": "Buscar rápido:",
+        "no_compat_parts": "No se encontraron piezas compatibles para este VIN.",
+        "quoting_with": "Cotizando con:",
+        "results_count": "resultado(s)",
+        "brands_count": "marca(s)",
+        "available_count": "disponible(s)",
+        "labor_auto": "Estimado automático",
+        # Badges
+        "badge_fits": "Encaja",
+        "badge_no_fit": "No encaja",
+        "badge_in_store": "En Tienda",
+        "badge_no_stock": "Sin stock",
+        # ProVantage
+        "pv_title": "ProVantage Auto Repair Network",
+        "pv_sub": "Garantía Extendida Incluida — Válida en Todo el País",
+        # Tier labels
+        "tier_budget": "Económico / Budget",
+        "tier_mid": "Intermedio / Mid",
+        "tier_premium": "Premium",
+        "tier_no_stock": "Sin stock",
+        "tier_no_fit": "No encajan con este vehículo",
+        "tier_other": "Otras opciones",
     },
     "English": {
         "shop_name": "Neighborhood Auto Shop",
@@ -184,6 +220,42 @@ TEXT = {
         "help_tip": "Tip: If you don't have the VIN, ask the customer to check their insurance card or registration.",
         "lang_btn": "Español",
         "footer": "Built with love for the family shop",
+        # Sidebar
+        "sidebar_title": "⚙️ Shop Settings",
+        "sidebar_labor": "Labor hours",
+        "sidebar_tax": "Tax (%)",
+        "sidebar_discount": "Discount",
+        "sidebar_discount_pct": "Percentage (%)",
+        "sidebar_discount_fixed": "Fixed amount ($)",
+        "sidebar_cheapest": "Cheapest option only",
+        "sidebar_fitment": "Verified-fit parts only",
+        "sidebar_status": "Supplier Status",
+        "sidebar_connected": "Connected",
+        "sidebar_not_configured": "Not configured",
+        # Results
+        "top_recs_title": "Top Recommendations",
+        "quick_search_hint": "Quick search:",
+        "no_compat_parts": "No compatible parts found for this VIN.",
+        "quoting_with": "Quoting with:",
+        "results_count": "result(s)",
+        "brands_count": "brand(s)",
+        "available_count": "available",
+        "labor_auto": "Auto estimate",
+        # Badges
+        "badge_fits": "Fits",
+        "badge_no_fit": "Does not fit",
+        "badge_in_store": "In Store",
+        "badge_no_stock": "No stock",
+        # ProVantage
+        "pv_title": "ProVantage Auto Repair Network",
+        "pv_sub": "Extended Nationwide Warranty Included",
+        # Tier labels
+        "tier_budget": "Budget",
+        "tier_mid": "Mid",
+        "tier_premium": "Premium",
+        "tier_no_stock": "Out of stock",
+        "tier_no_fit": "Does not fit this vehicle",
+        "tier_other": "Other options",
     },
 }
 
@@ -194,160 +266,184 @@ def apply_styles():
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
         html, body, [class*="css"] {
-            font-family: 'Nunito', sans-serif;
-            font-size: 18px;
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+            background-color: #f8fafc;
         }
 
+        /* Widen to use full page */
         .block-container {
-            padding-top: 1.5rem;
-            max-width: 960px;
+            padding-top: 1rem;
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
+            max-width: 100% !important;
         }
 
+        /* ── Dark automotive hero banner ── */
         .hero {
-            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
-            border-radius: 20px;
-            padding: 2.5rem 2rem;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            border-radius: 14px;
+            padding: 1.8rem 2rem;
             text-align: center;
             color: white;
-            margin: 0 0 1.5rem 0;
-            box-shadow: 0 8px 24px rgba(30, 58, 138, 0.25);
+            margin: 0 0 1.2rem 0;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+            border: 1px solid #334155;
             width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: "";
+            position: absolute;
+            top: -40px;
+            left: -40px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(251,146,60,0.15) 0%, transparent 70%);
+            pointer-events: none;
         }
         .hero h1 {
-            font-size: 2.6rem;
+            font-size: 2.1rem;
             font-weight: 800;
             margin: 0;
             color: white !important;
+            letter-spacing: -0.5px;
         }
+        .hero h1 span { color: #fb923c; }
         .hero p {
-            font-size: 1.25rem;
-            margin: 0.5rem 0 0;
-            opacity: 0.95;
+            font-size: 1.05rem;
+            margin: 0.4rem 0 0;
+            color: #94a3b8;
         }
 
+        /* ── Welcome box ── */
         .welcome-box {
-            background: #fffbeb;
-            border: 2px solid #fcd34d;
-            border-radius: 16px;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border: 1px solid #334155;
+            border-radius: 14px;
             padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.2rem;
             text-align: center;
         }
-        .welcome-box h2 {
-            color: #92400e;
-            font-size: 1.8rem;
-            margin: 0 0 0.5rem;
-        }
-        .welcome-box p {
-            color: #78350f;
-            font-size: 1.15rem;
-            margin: 0;
-        }
+        .welcome-box h2 { color: #fb923c; font-size: 1.6rem; margin: 0 0 0.4rem; }
+        .welcome-box p { color: #94a3b8; font-size: 1.05rem; margin: 0; }
 
+        /* ── Info cards ── */
         .info-card {
-            background: white;
-            border: 2px solid #e5e7eb;
-            border-radius: 16px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
             padding: 1.25rem;
             height: 100%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
-        .info-card h3 {
-            color: #1e3a8a;
-            font-size: 1.35rem;
-            margin: 0 0 0.5rem;
-        }
-        .info-card p {
-            color: #4b5563;
-            font-size: 1.05rem;
-            margin: 0;
-            line-height: 1.5;
-        }
+        .info-card h3 { color: #fb923c; font-size: 1.15rem; margin: 0 0 0.5rem; }
+        .info-card p { color: #94a3b8; font-size: 0.95rem; margin: 0; line-height: 1.5; }
 
+        /* ── Step badge pill ── */
         .step-badge {
             display: inline-block;
-            background: #1e3a8a;
-            color: white;
+            background: linear-gradient(90deg, #0f172a, #1e293b);
+            color: #fb923c;
             font-weight: 700;
-            font-size: 1.1rem;
-            padding: 0.4rem 1rem;
-            border-radius: 999px;
-            margin-bottom: 0.75rem;
-        }
-
-        .hint {
-            color: #6b7280;
             font-size: 0.95rem;
-            margin-top: -0.5rem;
+            padding: 0.35rem 1rem;
+            border-radius: 999px;
+            margin-bottom: 0.65rem;
+            border: 1px solid #fb923c;
+            letter-spacing: 0.3px;
         }
 
+        /* ── Hint text ── */
+        .hint { color: #94a3b8; font-size: 0.88rem; margin-top: -0.4rem; }
+
+        /* ── Total box ── */
         .total-box {
-            background: linear-gradient(135deg, #059669, #10b981);
+            background: linear-gradient(135deg, #064e3b, #065f46);
             color: white;
-            border-radius: 16px;
-            padding: 1.5rem;
+            border-radius: 14px;
+            padding: 1.4rem;
             text-align: center;
-            margin-top: 1rem;
+            margin-top: 0.8rem;
+            border: 1px solid #10b981;
         }
-        .total-box .label {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-        .total-box .amount {
-            font-size: 2.8rem;
-            font-weight: 800;
-            margin: 0.25rem 0;
-        }
+        .total-box .label { font-size: 0.88rem; color: #6ee7b7; letter-spacing: 1px; text-transform: uppercase; }
+        .total-box .amount { font-size: 2.6rem; font-weight: 800; margin: 0.2rem 0; }
 
-        .part-result {
-            background: #f0f9ff;
-            border-left: 5px solid #2563eb;
-            border-radius: 12px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 0.75rem;
-            font-size: 1.05rem;
-        }
-        .part-result.best {
-            background: #ecfdf5;
-            border-left-color: #059669;
-        }
-
+        /* ── Help steps ── */
         .help-step {
-            background: #f9fafb;
-            border-radius: 12px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 0.75rem;
-            font-size: 1.1rem;
-            line-height: 1.5;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 0.9rem 1.1rem;
+            margin-bottom: 0.6rem;
+            font-size: 1rem;
+            color: #e2e8f0;
         }
 
+        /* ── Buttons ── */
         div.stButton > button {
-            font-size: 1.15rem !important;
-            font-weight: 700 !important;
-            padding: 0.75rem 1.5rem !important;
-            border-radius: 12px !important;
+            font-size: 1rem !important;
+            font-weight: 600 !important;
+            padding: 0.6rem 1.25rem !important;
+            border-radius: 8px !important;
+            transition: all 0.15s ease;
         }
-
         div.stButton > button[kind="primary"] {
-            background: #2563eb !important;
+            background: #f97316 !important;
             border: none !important;
+            color: white !important;
         }
-
-        div[data-testid="column"] .stButton > button {
-            min-height: 48px;
+        div.stButton > button[kind="primary"]:hover {
+            background: #ea580c !important;
         }
+        div[data-testid="column"] .stButton > button { min-height: 44px; }
 
-        .toolbar-spacer {
-            height: 0.25rem;
+        /* ── Sidebar dark theme ── */
+        [data-testid="stSidebar"] {
+            background: #0f172a !important;
+            border-right: 1px solid #1e293b;
+        }
+        [data-testid="stSidebar"] * { color: #e2e8f0 !important; }
+        [data-testid="stSidebar"] .stNumberInput input,
+        [data-testid="stSidebar"] .stTextInput input {
+            background: #1e293b !important;
+            border: 1px solid #334155 !important;
+            color: white !important;
+            border-radius: 6px;
+        }
+        [data-testid="stSidebar"] .stSelectbox,
+        [data-testid="stSidebar"] .stRadio { color: #e2e8f0 !important; }
+
+        /* ── Part cards in results ── */
+        .part-card {
+            background: white;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            transition: transform 0.1s;
+        }
+        .part-card:hover { transform: translateY(-1px); }
+
+        /* ── Supplier badge pill ── */
+        .sup-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 700;
+            margin-right: 4px;
         }
 
         .footer-text {
             text-align: center;
-            color: #9ca3af;
-            font-size: 0.95rem;
+            color: #475569;
+            font-size: 0.88rem;
             margin-top: 2rem;
             padding-bottom: 1rem;
         }
@@ -358,6 +454,67 @@ def apply_styles():
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_sidebar(config) -> dict:
+    """Render the business settings sidebar and return the selected values."""
+    with st.sidebar:
+        st.markdown(f"## {T['sidebar_title']}")
+        st.divider()
+
+        # ── Supplier status badges ──────────────────────────────────────
+        st.markdown(f"**{T['sidebar_status']}**")
+        az_ok = config.autozone.configured
+        or_ok = config.oreilly.configured
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(
+                f'<div style="background:{"#064e3b" if az_ok else "#1e293b"};border:1px solid {"#10b981" if az_ok else "#334155"};border-radius:8px;padding:6px 10px;font-size:0.78em;color:{"#10b981" if az_ok else "#64748b"};font-weight:700;text-align:center;">🟠 AutoZone<br>{"✔ " + T["sidebar_connected"] if az_ok else T["sidebar_not_configured"]}</div>',
+                unsafe_allow_html=True,
+            )
+        with c2:
+            st.markdown(
+                f'<div style="background:{"#064e3b" if or_ok else "#1e293b"};border:1px solid {"#10b981" if or_ok else "#334155"};border-radius:8px;padding:6px 10px;font-size:0.78em;color:{"#10b981" if or_ok else "#64748b"};font-weight:700;text-align:center;">🟢 O\'Reilly<br>{"✔ " + T["sidebar_connected"] if or_ok else T["sidebar_not_configured"]}</div>',
+                unsafe_allow_html=True,
+            )
+
+        st.divider()
+
+        # ── Labor ──────────────────────────────────────────────────────
+        st.markdown(f"**{T['sidebar_labor']}**")
+        st.caption(T["labor_hint"])
+        labor_hours = st.number_input("labor_in", min_value=0.0, max_value=20.0, value=1.0, step=0.5, label_visibility="collapsed")
+
+        st.divider()
+
+        # ── Tax ────────────────────────────────────────────────────────
+        st.markdown(f"**{T['sidebar_tax']}**")
+        tax_rate = st.number_input("tax_in", min_value=0.0, max_value=25.0, value=0.0, step=0.25, format="%.2f", label_visibility="collapsed")
+
+        st.divider()
+
+        # ── Discount ────────────────────────────────────────────────────
+        st.markdown(f"**{T['sidebar_discount']}**")
+        discount_type = st.radio("disc_type", [T["sidebar_discount_pct"], T["sidebar_discount_fixed"]], horizontal=True, label_visibility="collapsed")
+        discount_val = st.number_input("disc_val", min_value=0.0, max_value=10000.0, value=0.0, step=1.0, label_visibility="collapsed")
+
+        st.divider()
+
+        # ── Toggles ─────────────────────────────────────────────────────
+        show_cheapest = st.toggle(T["sidebar_cheapest"], value=False)
+        hide_non_fitting = st.toggle(T["sidebar_fitment"], value=st.session_state.hide_non_fitting)
+        if hide_non_fitting != st.session_state.hide_non_fitting:
+            st.session_state.hide_non_fitting = hide_non_fitting
+            st.rerun()
+
+    return {
+        "labor_hours": labor_hours,
+        "tax_rate": tax_rate,
+        "discount_type": discount_type,
+        "discount_val": discount_val,
+        "show_cheapest": show_cheapest,
+        "hide_non_fitting": hide_non_fitting,
+    }
 
 
 def render_toolbar():
@@ -579,9 +736,14 @@ def estimate_labor_hours(query: str) -> float:
 
 def render_quote():
     config = get_config()
-    if config.any_configured:
-        st.caption(f"{T['suppliers_ready']} {' · '.join(config.status_lines())}")
-    else:
+    sidebar_vals = render_sidebar(config)
+    labor_hours = sidebar_vals["labor_hours"]
+    tax_rate = sidebar_vals["tax_rate"]
+    discount_type = sidebar_vals["discount_type"]
+    discount_val = sidebar_vals["discount_val"]
+    show_cheapest = sidebar_vals["show_cheapest"]
+
+    if not config.any_configured:
         st.warning(T["env_missing"])
 
     # ── Step 1: VIN + Customer Info ─────────────────────────────────────────
@@ -659,7 +821,7 @@ def render_quote():
     st.markdown(f'<span class="step-badge">{T["step2"]}</span>', unsafe_allow_html=True)
 
     # Quick-category buttons — 4 per row, clean single-line labels
-    st.markdown("<p style='color:#6b7280;font-size:0.88em;margin-bottom:4px;'>Buscar rápido / Quick search:</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#94a3b8;font-size:0.86em;margin-bottom:4px;'>{T['quick_search_hint']}</p>", unsafe_allow_html=True)
     rows = [QUICK_PARTS[i:i+4] for i in range(0, len(QUICK_PARTS), 4)]
     for row in rows:
         btn_cols = st.columns(len(row))
@@ -675,24 +837,11 @@ def render_quote():
     if part_in != part_default:
         st.session_state.quick_part = part_in
     st.markdown(f'<p class="hint">{T["part_hint"]}</p>', unsafe_allow_html=True)
-
-    # ── Controls row ────────────────────────────────────────────────────────
-    ctrl_a, ctrl_b, ctrl_c, ctrl_d = st.columns(4)
-    with ctrl_a:
-        show_cheapest = st.toggle(T["toggle_cheap"], value=False)
-        hide_non_fitting = st.toggle("Mostrar solo piezas garantizadas para encajar / Show only verified fitting parts", value=st.session_state.hide_non_fitting)
-        if hide_non_fitting != st.session_state.hide_non_fitting:
-            st.session_state.hide_non_fitting = hide_non_fitting
-            st.rerun()
-    with ctrl_b:
-        estimated_hours = estimate_labor_hours(part_in)
-        labor_hours = st.number_input(T["labor_lbl"], min_value=0.0, max_value=20.0, value=estimated_hours, step=0.5)
-        st.caption(f"Estimado automático: **{estimated_hours} hrs** (pude cambiarlo manualmente)")
-    with ctrl_c:
-        tax_rate = st.number_input(T["tax_lbl"], min_value=0.0, max_value=25.0, value=0.0, step=0.25, format="%.2f")
-    with ctrl_d:
-        discount_type = st.radio(T["discount_lbl"], [T["discount_type_pct"], T["discount_type_fixed"]], horizontal=True)
-        discount_val = st.number_input("", min_value=0.0, max_value=10000.0, value=0.0, step=1.0, label_visibility="collapsed")
+    
+    # Auto-update labor hours estimate in sidebar
+    estimated_hours = estimate_labor_hours(part_in)
+    if estimated_hours != labor_hours and part_in:
+        st.caption(f"{T['labor_auto']}: **{estimated_hours} hrs** — {T['labor_hint']}")
 
     st.write("")
     if st.button(T["btn_search"], type="primary", use_container_width=True):
@@ -728,7 +877,7 @@ def render_quote():
             scraped_data = [p for p in scraped_data if p.fits_vehicle and not p.does_not_fit]
 
         if not scraped_data:
-            st.warning("No se encontraron partes compatibles con este VIN / No compatible parts found for this VIN")
+            st.warning(T["no_compat_parts"])
         else:
             st.session_state.selected_idx = min(st.session_state.selected_idx, len(scraped_data) - 1)
             display_items = [scraped_data[0]] if show_cheapest else scraped_data
@@ -737,7 +886,7 @@ def render_quote():
 
             brand_count = len({p.brand for p in display_items})
             avail_count = sum(1 for p in display_items if p.available)
-            st.caption(f"{len(display_items)} resultado(s) · {brand_count} marca(s) · {avail_count} disponible(s)")
+            st.caption(f"{len(display_items)} {T['results_count']} · {brand_count} {T['brands_count']} · {avail_count} {T['available_count']}")
 
             has_vin = bool(vin_in and len(vin_in) == 17 and car_info)
 
@@ -746,7 +895,7 @@ def render_quote():
             other_items = [p for p in display_items if p not in top_recs]
 
             if top_recs:
-                st.markdown("<h4 style='color:#1e3a8a;margin-bottom:10px;'>⭐ Recomendaciones principales / Top Recommendations</h4>", unsafe_allow_html=True)
+                st.markdown(f"<h4 style='color:#fb923c;margin-bottom:10px;'>⭐ {T['top_recs_title']}</h4>", unsafe_allow_html=True)
                 for pair in [top_recs[i:i+2] for i in range(0, len(top_recs), 2)]:
                     gcols = st.columns(len(pair))
                     for col, item in zip(gcols, pair):
@@ -756,9 +905,9 @@ def render_quote():
                         ring = f"box-shadow:0 0 0 3px {bc},0 4px 12px rgba(0,0,0,0.1);" if is_sel else "box-shadow:0 2px 6px rgba(0,0,0,0.06);"
                         
                         bgs = f'<span style="background:{bc};color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:700;margin-right:3px;">{item.store}</span>'
-                        bgs += '<span style="background:#16a34a;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">Fits Vehicle</span>'
+                        bgs += f'<span style="background:#16a34a;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_fits"]}</span>'
                         if item.store_qty > 0:
-                            bgs += '<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">En Tienda</span>'
+                            bgs += f'<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_in_store"]}</span>'
                         
                         pos_html = ""
                         for pos in (item.position or "").split("/"):
@@ -801,7 +950,7 @@ def render_quote():
                 if not parts:
                     return []
                 if len(parts) < 4:
-                    return [("Otras opciones / Other options", parts)]
+                    return [(f"🔧 {T['tier_other']}", parts)]
                 prices = sorted(set(p.price for p in parts))
                 low_cut = prices[len(prices) // 3]
                 hi_cut = prices[2 * len(prices) // 3]
@@ -810,18 +959,18 @@ def render_quote():
                 prem = [p for p in parts if p.price > hi_cut]
                 tiers = []
                 if budget:
-                    tiers.append((f"💚 Económico / Budget  —  ${budget[0].price:.2f}–${budget[-1].price:.2f}", budget))
+                    tiers.append((f"💚 {T['tier_budget']}  —  ${budget[0].price:.2f}–${budget[-1].price:.2f}", budget))
                 if mid:
-                    tiers.append((f"💛 Intermedio / Mid  —  ${mid[0].price:.2f}–${mid[-1].price:.2f}", mid))
+                    tiers.append((f"💛 {T['tier_mid']}  —  ${mid[0].price:.2f}–${mid[-1].price:.2f}", mid))
                 if prem:
-                    tiers.append((f"💎 Premium  —  ${prem[0].price:.2f}–${prem[-1].price:.2f}", prem))
+                    tiers.append((f"💎 {T['tier_premium']}  —  ${prem[0].price:.2f}–${prem[-1].price:.2f}", prem))
                 return tiers
 
             tiers = assign_tier(avail_parts)
             if unavail_parts:
-                tiers.append(("⬇️ Sin stock / Out of stock", unavail_parts))
+                tiers.append((f"⬇️ {T['tier_no_stock']}", unavail_parts))
             if wrong_fit_parts:
-                tiers.append(("❌ No encajan / Does not fit vehicle", wrong_fit_parts))
+                tiers.append((f"❌ {T['tier_no_fit']}", wrong_fit_parts))
 
             for tier_label, tier_parts in tiers:
                 is_collapsed = any(k in tier_label for k in ("Sin stock", "No encajan"))
@@ -836,10 +985,10 @@ def render_quote():
                             op = "0.4" if not item.available else "1"
 
                             bgs = f'<span style="background:{bc};color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:700;margin-right:3px;">{item.store}</span>'
-                            if item.fits_vehicle: bgs += '<span style="background:#16a34a;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">Fits</span>'
-                            elif has_vin and not item.fits_vehicle: bgs += '<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">No encaja</span>'
-                            if item.store_qty > 0: bgs += '<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">En Tienda</span>'
-                            if not item.available: bgs += '<span style="background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:4px;font-size:0.72em;">Sin stock</span>'
+                            if item.fits_vehicle: bgs += f'<span style="background:#16a34a;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_fits"]}</span>'
+                            elif has_vin and not item.fits_vehicle: bgs += f'<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_no_fit"]}</span>'
+                            if item.store_qty > 0: bgs += f'<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_in_store"]}</span>'
+                            if not item.available: bgs += f'<span style="background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:4px;font-size:0.72em;">{T["badge_no_stock"]}</span>'
 
                             _pos_colors = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}
                             pos_html = "".join(
@@ -878,7 +1027,7 @@ def render_quote():
                 sel_idx = 0
                 st.session_state.selected_idx = 0
             chosen_part = scraped_data[sel_idx] if scraped_data else display_items[0]
-            st.info(f"Cotizando con / Quoting: **{chosen_part.brand} {chosen_part.description}** — ${chosen_part.price:.2f} ({chosen_part.store})")
+            st.info(f"**{T['quoting_with']}** {chosen_part.brand} {chosen_part.description} — ${chosen_part.price:.2f} ({chosen_part.store})")
             chosen_part_cost = chosen_part.price
             parts_markup = chosen_part_cost * 1.30
             calculated_labor = labor_hours * 100.00
@@ -897,13 +1046,12 @@ def render_quote():
 
             # ProVantage badge
             st.markdown(
-                """
-                <div style="background:linear-gradient(90deg,#1e3a8a,#2563eb);border-radius:10px;padding:12px 18px;margin:16px 0 8px;display:flex;align-items:center;gap:14px;">
+                f"""
+                <div style="background:linear-gradient(90deg,#0f172a,#1e293b);border:1px solid #f97316;border-radius:10px;padding:12px 18px;margin:16px 0 8px;display:flex;align-items:center;gap:14px;">
                     <div style="font-size:2em;">🏆</div>
                     <div>
-                        <div style="color:#fbbf24;font-weight:800;font-size:1em;">ProVantage Auto Repair Network</div>
-                        <div style="color:white;font-size:0.85em;">Garantía Extendida Incluida — Válida en Todo el País</div>
-                        <div style="color:#93c5fd;font-size:0.78em;">Extended Nationwide Warranty Included on this Quote</div>
+                        <div style="color:#fb923c;font-weight:800;font-size:1em;">{T["pv_title"]}</div>
+                        <div style="color:#e2e8f0;font-size:0.85em;">{T["pv_sub"]}</div>
                     </div>
                 </div>
                 """,
