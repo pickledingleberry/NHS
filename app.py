@@ -266,184 +266,163 @@ def apply_styles():
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
+        /* ── Base ── */
         html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 16px;
-            background-color: #f8fafc;
+            background: #f1f5f9;
+            color: #1e293b;
         }
-
-        /* Widen to use full page */
         .block-container {
-            padding-top: 1rem;
+            padding-top: 0.75rem;
             padding-left: 1.5rem !important;
             padding-right: 1.5rem !important;
             max-width: 100% !important;
         }
 
-        /* ── Dark automotive hero banner ── */
+        /* ── Hero banner – clean navy ── */
         .hero {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-            border-radius: 14px;
-            padding: 1.8rem 2rem;
+            background: linear-gradient(120deg, #1e3a8a 0%, #1d4ed8 100%);
+            border-radius: 16px;
+            padding: 1.6rem 2rem;
             text-align: center;
             color: white;
-            margin: 0 0 1.2rem 0;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.35);
-            border: 1px solid #334155;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 20px rgba(29,78,216,0.25);
         }
-        .hero::before {
-            content: "";
-            position: absolute;
-            top: -40px;
-            left: -40px;
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, rgba(251,146,60,0.15) 0%, transparent 70%);
-            pointer-events: none;
-        }
-        .hero h1 {
-            font-size: 2.1rem;
-            font-weight: 800;
-            margin: 0;
-            color: white !important;
-            letter-spacing: -0.5px;
-        }
-        .hero h1 span { color: #fb923c; }
-        .hero p {
-            font-size: 1.05rem;
-            margin: 0.4rem 0 0;
-            color: #94a3b8;
-        }
+        .hero h1 { font-size: 2rem; font-weight: 800; margin: 0; color: white !important; }
+        .hero p   { font-size: 1rem; margin: 0.3rem 0 0; color: #bfdbfe; }
 
-        /* ── Welcome box ── */
+        /* ── Welcome ── */
         .welcome-box {
-            background: linear-gradient(135deg, #0f172a, #1e293b);
-            border: 1px solid #334155;
+            background: white;
+            border: 2px solid #dbeafe;
             border-radius: 14px;
             padding: 1.5rem;
             margin-bottom: 1.2rem;
             text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
-        .welcome-box h2 { color: #fb923c; font-size: 1.6rem; margin: 0 0 0.4rem; }
-        .welcome-box p { color: #94a3b8; font-size: 1.05rem; margin: 0; }
+        .welcome-box h2 { color: #1e3a8a; font-size: 1.7rem; margin: 0 0 0.4rem; }
+        .welcome-box p  { color: #475569; font-size: 1.05rem; margin: 0; }
 
-        /* ── Info cards ── */
+        /* ── Info cards (homepage) ── */
         .info-card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 1.25rem;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 1.2rem;
             height: 100%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
-        .info-card h3 { color: #fb923c; font-size: 1.15rem; margin: 0 0 0.5rem; }
-        .info-card p { color: #94a3b8; font-size: 0.95rem; margin: 0; line-height: 1.5; }
+        .info-card h3 { color: #1e3a8a; font-size: 1.1rem; margin: 0 0 0.4rem; }
+        .info-card p  { color: #64748b; font-size: 0.95rem; margin: 0; line-height: 1.5; }
 
-        /* ── Step badge pill ── */
+        /* ── Step badge ── */
         .step-badge {
             display: inline-block;
-            background: linear-gradient(90deg, #0f172a, #1e293b);
-            color: #fb923c;
+            background: #1e3a8a;
+            color: white;
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
             padding: 0.35rem 1rem;
             border-radius: 999px;
-            margin-bottom: 0.65rem;
-            border: 1px solid #fb923c;
-            letter-spacing: 0.3px;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.2px;
         }
 
         /* ── Hint text ── */
-        .hint { color: #94a3b8; font-size: 0.88rem; margin-top: -0.4rem; }
+        .hint { color: #94a3b8; font-size: 0.85rem; margin-top: -0.35rem; }
 
-        /* ── Total box ── */
+        /* ── Grand total box ── */
         .total-box {
-            background: linear-gradient(135deg, #064e3b, #065f46);
+            background: linear-gradient(135deg, #15803d, #16a34a);
             color: white;
-            border-radius: 14px;
-            padding: 1.4rem;
+            border-radius: 16px;
+            padding: 1.5rem;
             text-align: center;
             margin-top: 0.8rem;
-            border: 1px solid #10b981;
+            box-shadow: 0 4px 16px rgba(22,163,74,0.3);
         }
-        .total-box .label { font-size: 0.88rem; color: #6ee7b7; letter-spacing: 1px; text-transform: uppercase; }
-        .total-box .amount { font-size: 2.6rem; font-weight: 800; margin: 0.2rem 0; }
+        .total-box .label { font-size: 0.78rem; color: #bbf7d0; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
+        .total-box .amount { font-size: 2.8rem; font-weight: 800; margin: 0.2rem 0; }
 
         /* ── Help steps ── */
         .help-step {
-            background: #1e293b;
-            border: 1px solid #334155;
+            background: white;
+            border: 2px solid #e2e8f0;
             border-radius: 10px;
             padding: 0.9rem 1.1rem;
             margin-bottom: 0.6rem;
             font-size: 1rem;
-            color: #e2e8f0;
+            color: #1e293b;
         }
 
-        /* ── Buttons ── */
+        /* ── Primary buttons – bold blue ── */
         div.stButton > button {
             font-size: 1rem !important;
-            font-weight: 600 !important;
-            padding: 0.6rem 1.25rem !important;
-            border-radius: 8px !important;
+            font-weight: 700 !important;
+            padding: 0.65rem 1.25rem !important;
+            border-radius: 10px !important;
             transition: all 0.15s ease;
+            box-shadow: none !important;
         }
         div.stButton > button[kind="primary"] {
-            background: #f97316 !important;
+            background: #1d4ed8 !important;
             border: none !important;
             color: white !important;
+            font-size: 1.05rem !important;
         }
-        div.stButton > button[kind="primary"]:hover {
-            background: #ea580c !important;
-        }
-        div[data-testid="column"] .stButton > button { min-height: 44px; }
+        div.stButton > button[kind="primary"]:hover { background: #1e40af !important; }
+        div[data-testid="column"] .stButton > button { min-height: 46px; }
 
-        /* ── Sidebar dark theme ── */
+        /* ── Sidebar – clean white ── */
         [data-testid="stSidebar"] {
-            background: #0f172a !important;
-            border-right: 1px solid #1e293b;
+            background: white !important;
+            border-right: 2px solid #e2e8f0 !important;
         }
-        [data-testid="stSidebar"] * { color: #e2e8f0 !important; }
-        [data-testid="stSidebar"] .stNumberInput input,
-        [data-testid="stSidebar"] .stTextInput input {
-            background: #1e293b !important;
-            border: 1px solid #334155 !important;
-            color: white !important;
-            border-radius: 6px;
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] span {
+            color: #1e293b !important;
+            font-size: 0.95rem !important;
         }
-        [data-testid="stSidebar"] .stSelectbox,
-        [data-testid="stSidebar"] .stRadio { color: #e2e8f0 !important; }
 
-        /* ── Part cards in results ── */
+        /* ── Product result cards ── */
         .part-card {
             background: white;
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 6px;
-            transition: transform 0.1s;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            border: 2px solid #e2e8f0;
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .part-card:hover { transform: translateY(-1px); }
+        .part-card:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 4px 14px rgba(29,78,216,0.08);
+        }
 
-        /* ── Supplier badge pill ── */
-        .sup-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.8em;
-            font-weight: 700;
-            margin-right: 4px;
+        /* ── Quick-search buttons – smaller, pill style ── */
+        div[data-testid="column"] .stButton > button[kind="secondary"] {
+            background: white !important;
+            border: 2px solid #e2e8f0 !important;
+            color: #1e293b !important;
+            font-size: 0.88rem !important;
+            font-weight: 600 !important;
+            padding: 0.4rem 0.6rem !important;
+            border-radius: 10px !important;
+        }
+        div[data-testid="column"] .stButton > button[kind="secondary"]:hover {
+            border-color: #1d4ed8 !important;
+            color: #1d4ed8 !important;
         }
 
         .footer-text {
             text-align: center;
-            color: #475569;
-            font-size: 0.88rem;
+            color: #94a3b8;
+            font-size: 0.85rem;
             margin-top: 2rem;
             padding-bottom: 1rem;
         }
@@ -469,12 +448,12 @@ def render_sidebar(config) -> dict:
         c1, c2 = st.columns(2)
         with c1:
             st.markdown(
-                f'<div style="background:{"#064e3b" if az_ok else "#1e293b"};border:1px solid {"#10b981" if az_ok else "#334155"};border-radius:8px;padding:6px 10px;font-size:0.78em;color:{"#10b981" if az_ok else "#64748b"};font-weight:700;text-align:center;">🟠 AutoZone<br>{"✔ " + T["sidebar_connected"] if az_ok else T["sidebar_not_configured"]}</div>',
+                f'<div style="background:{"#f0fdf4" if az_ok else "#f8fafc"};border:2px solid {"#16a34a" if az_ok else "#e2e8f0"};border-radius:10px;padding:8px 10px;font-size:0.78em;color:{"#15803d" if az_ok else "#94a3b8"};font-weight:700;text-align:center;">🟠 AutoZone<br>{"✔ " + T["sidebar_connected"] if az_ok else T["sidebar_not_configured"]}</div>',
                 unsafe_allow_html=True,
             )
         with c2:
             st.markdown(
-                f'<div style="background:{"#064e3b" if or_ok else "#1e293b"};border:1px solid {"#10b981" if or_ok else "#334155"};border-radius:8px;padding:6px 10px;font-size:0.78em;color:{"#10b981" if or_ok else "#64748b"};font-weight:700;text-align:center;">🟢 O\'Reilly<br>{"✔ " + T["sidebar_connected"] if or_ok else T["sidebar_not_configured"]}</div>',
+                f'<div style="background:{"#f0fdf4" if or_ok else "#f8fafc"};border:2px solid {"#16a34a" if or_ok else "#e2e8f0"};border-radius:10px;padding:8px 10px;font-size:0.78em;color:{"#15803d" if or_ok else "#94a3b8"};font-weight:700;text-align:center;">🟢 O\'Reilly<br>{"✔ " + T["sidebar_connected"] if or_ok else T["sidebar_not_configured"]}</div>',
                 unsafe_allow_html=True,
             )
 
@@ -894,52 +873,82 @@ def render_quote():
             top_recs = [p for p in display_items if p.fits_vehicle and p.available][:3]
             other_items = [p for p in display_items if p not in top_recs]
 
+            def _part_card(item, global_idx, key_prefix, scraped_data):
+                """Render a clean, simple product card and return True if selected."""
+                is_sel = global_idx == st.session_state.selected_idx
+                bc = SUPPLIER_COLORS.get(item.store, "#475569")
+                border = f"2px solid {bc}" if is_sel else "2px solid #e2e8f0"
+                shadow = f"box-shadow:0 0 0 3px {bc}33,0 4px 14px rgba(0,0,0,0.06);" if is_sel else "box-shadow:0 2px 8px rgba(0,0,0,0.04);"
+
+                # Badges row
+                badges = f'<span style="background:{bc};color:white;padding:1px 7px;border-radius:5px;font-size:0.7em;font-weight:700;margin-right:4px;">{item.store}</span>'
+                if item.fits_vehicle:
+                    badges += f'<span style="background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:5px;font-size:0.7em;font-weight:700;margin-right:4px;">{T["badge_fits"]}</span>'
+                elif has_vin and not item.fits_vehicle:
+                    badges += f'<span style="background:#fee2e2;color:#dc2626;padding:1px 7px;border-radius:5px;font-size:0.7em;font-weight:700;margin-right:4px;">{T["badge_no_fit"]}</span>'
+                if item.store_qty > 0:
+                    badges += f'<span style="background:#dbeafe;color:#1d4ed8;padding:1px 7px;border-radius:5px;font-size:0.7em;font-weight:700;margin-right:4px;">{T["badge_in_store"]}</span>'
+                if not item.available:
+                    badges += f'<span style="background:#f1f5f9;color:#94a3b8;padding:1px 7px;border-radius:5px;font-size:0.7em;">{T["badge_no_stock"]}</span>'
+
+                # Position
+                pos_html = ""
+                _pc = {"Front": "#3b82f6", "Rear": "#7c3aed", "Front and Rear": "#0891b2"}
+                for p in (item.position or "").split("/"):
+                    p = p.strip()
+                    if p:
+                        pos_html += f'<span style="background:{_pc.get(p,"#64748b")};color:white;padding:1px 7px;border-radius:5px;font-size:0.7em;margin-right:3px;">{p}</span>'
+
+                # Key specs only (1-2 most important)
+                key_attrs = list((item.attributes or {}).items())[:2]
+                specs_html = " &nbsp;·&nbsp; ".join(f'<span style="color:#64748b;font-size:0.78em;">{v}</span>' for k, v in key_attrs)
+
+                list_html = f'<span style="color:#94a3b8;text-decoration:line-through;font-size:0.82em;margin-left:6px;">${item.list_price:.2f}</span>' if item.list_price > item.price else ""
+                avail_html = ""
+                if item.store_qty > 0:
+                    avail_html = f'<span style="color:#16a34a;font-size:0.8em;font-weight:600;">{item.store_qty} {T["badge_in_store"]}</span>'
+                elif item.total_qty > 0:
+                    avail_html = f'<span style="color:#64748b;font-size:0.8em;">{item.eta}</span>'
+                else:
+                    avail_html = f'<span style="color:#ef4444;font-size:0.8em;">{T["badge_no_stock"]}</span>'
+
+                img_html = f'<img src="{item.image_url}" style="width:68px;height:68px;object-fit:contain;border-radius:8px;border:1px solid #e2e8f0;margin-right:12px;flex-shrink:0;background:white;" onerror="this.style.display=\'none\'"/>' if item.image_url else ""
+                pn_html = f'<span style="color:#94a3b8;font-size:0.75em;">#{item.part_number}</span>' if item.part_number else ""
+
+                st.markdown(f"""
+                    <div style="border:{border};border-radius:12px;background:white;padding:12px 14px;margin-bottom:8px;{shadow}opacity:{"0.45" if not item.available else "1"};">
+                        <div style="display:flex;align-items:flex-start;">
+                            {img_html}
+                            <div style="flex:1;min-width:0;">
+                                <div style="margin-bottom:5px;">{badges} {pos_html}</div>
+                                <div style="font-size:0.97em;font-weight:700;color:#0f172a;line-height:1.3;margin-bottom:2px;">{item.brand} {item.description}</div>
+                                <div style="margin-bottom:5px;">{pn_html} &nbsp; {specs_html}</div>
+                                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+                                    <div>
+                                        <span style="font-size:1.5em;font-weight:800;color:{bc};">${item.price:.2f}</span>
+                                        {list_html}
+                                    </div>
+                                    <div style="text-align:right;">{avail_html}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>""", unsafe_allow_html=True)
+
+                if item.available:
+                    lbl = "✅ Seleccionado" if is_sel else ("Usar para cotizar" if st.session_state.lang == "Español" else "Use for quote")
+                    if st.button(lbl, key=f"{key_prefix}_{global_idx}", use_container_width=True,
+                                 type="primary" if is_sel else "secondary"):
+                        st.session_state.selected_idx = global_idx
+                        st.rerun()
+
             if top_recs:
-                st.markdown(f"<h4 style='color:#fb923c;margin-bottom:10px;'>⭐ {T['top_recs_title']}</h4>", unsafe_allow_html=True)
-                for pair in [top_recs[i:i+2] for i in range(0, len(top_recs), 2)]:
+                st.markdown(f"<h4 style='color:#1e3a8a;margin-bottom:8px;'>⭐ {T['top_recs_title']}</h4>", unsafe_allow_html=True)
+                for pair in [top_recs[i:i+3] for i in range(0, len(top_recs), 3)]:
                     gcols = st.columns(len(pair))
                     for col, item in zip(gcols, pair):
                         global_idx = next((i for i, p in enumerate(scraped_data) if p is item), 0)
-                        is_sel = global_idx == st.session_state.selected_idx
-                        bc = SUPPLIER_COLORS.get(item.store, "#6b7280")
-                        ring = f"box-shadow:0 0 0 3px {bc},0 4px 12px rgba(0,0,0,0.1);" if is_sel else "box-shadow:0 2px 6px rgba(0,0,0,0.06);"
-                        
-                        bgs = f'<span style="background:{bc};color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:700;margin-right:3px;">{item.store}</span>'
-                        bgs += f'<span style="background:#16a34a;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_fits"]}</span>'
-                        if item.store_qty > 0:
-                            bgs += f'<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_in_store"]}</span>'
-                        
-                        pos_html = ""
-                        for pos in (item.position or "").split("/"):
-                            p = pos.strip()
-                            if p:
-                                pc = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}.get(p, "#6b7280")
-                                pos_html += f'<span style="background:{pc};color:white;padding:1px 6px;border-radius:4px;font-size:0.72em;margin-right:2px;">{p}</span>'
-
-                        attrs_html = "".join(f'<span style="color:#6b7280;font-size:0.76em;margin-right:8px;">{k}: <b style="color:#374151;">{v}</b></span>' for k, v in list((item.attributes or {}).items())[:3])
-                        list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.8em;margin-left:5px;">${item.list_price:.2f}</span>' if item.list_price > item.price else ""
-                        av = (f'<span style="color:#16a34a;font-size:0.76em;font-weight:600;">{item.store_qty} en tienda</span> ' if item.store_qty > 0 else "") + (f'<span style="color:#6b7280;font-size:0.76em;">{item.total_qty} total</span>' if item.total_qty > 0 else "")
-                        pn = f'<span style="color:#6b7280;font-size:0.74em;">Part #: <b>{item.part_number}</b></span>' if item.part_number else ""
-                        img = f'<img src="{item.image_url}" style="width:62px;height:62px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;margin-right:9px;flex-shrink:0;" onerror="this.style.display=\'none\'"/>' if item.image_url else ""
-
                         with col:
-                            st.markdown(f"""
-                                <div style="border-left:4px solid {bc};border-radius:10px;background:white;padding:10px 12px;margin-bottom:6px;{ring}">
-                                    <div style="display:flex;align-items:flex-start;">{img}
-                                        <div style="flex:1;min-width:0;">
-                                            <div style="margin-bottom:3px;">{bgs}{pos_html}</div>
-                                            <div style="font-size:0.9em;font-weight:700;color:#111827;line-height:1.3;margin-bottom:1px;">{item.brand} {item.description}</div>
-                                            <div style="margin-bottom:3px;">{pn}</div>
-                                            <div style="margin-bottom:4px;">{attrs_html}</div>
-                                            <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;"><span style="font-size:1.3em;font-weight:800;color:{bc};">${item.price:.2f}</span>{list_html}</div>
-                                            <div>{av}</div><div style="color:#6b7280;font-size:0.74em;">{item.eta}</div>
-                                        </div>
-                                    </div>
-                                </div>""", unsafe_allow_html=True)
-                            btn_lbl = "✅ Seleccionado" if is_sel else "Usar para cotizar"
-                            if st.button(btn_lbl, key=f"sel_top_{global_idx}", use_container_width=True, type="primary" if is_sel else "secondary"):
-                                st.session_state.selected_idx = global_idx
-                                st.rerun()
+                            _part_card(item, global_idx, "sel_top", scraped_data)
 
             # ── 2. Collapsible Price Tiers (All other options) ────────────────────
             avail_parts = [p for p in other_items if p.available and not p.does_not_fit]
@@ -973,53 +982,14 @@ def render_quote():
                 tiers.append((f"❌ {T['tier_no_fit']}", wrong_fit_parts))
 
             for tier_label, tier_parts in tiers:
-                is_collapsed = any(k in tier_label for k in ("Sin stock", "No encajan"))
+                is_collapsed = any(k in tier_label for k in (T["tier_no_stock"], T["tier_no_fit"]))
                 with st.expander(tier_label, expanded=not is_collapsed):
                     for pair in [tier_parts[i:i+2] for i in range(0, len(tier_parts), 2)]:
                         gcols = st.columns(len(pair))
                         for col, item in zip(gcols, pair):
                             global_idx = next((i for i, p in enumerate(scraped_data) if p is item), 0)
-                            is_sel = global_idx == st.session_state.selected_idx
-                            bc = SUPPLIER_COLORS.get(item.store, "#6b7280")
-                            ring = f"box-shadow:0 0 0 3px {bc},0 4px 12px rgba(0,0,0,0.1);" if is_sel else "box-shadow:0 2px 6px rgba(0,0,0,0.06);"
-                            op = "0.4" if not item.available else "1"
-
-                            bgs = f'<span style="background:{bc};color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:700;margin-right:3px;">{item.store}</span>'
-                            if item.fits_vehicle: bgs += f'<span style="background:#16a34a;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_fits"]}</span>'
-                            elif has_vin and not item.fits_vehicle: bgs += f'<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_no_fit"]}</span>'
-                            if item.store_qty > 0: bgs += f'<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">{T["badge_in_store"]}</span>'
-                            if not item.available: bgs += f'<span style="background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:4px;font-size:0.72em;">{T["badge_no_stock"]}</span>'
-
-                            _pos_colors = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}
-                            pos_html = "".join(
-                                f'<span style="background:{_pos_colors.get(p.strip(), "#6b7280")};color:white;padding:1px 6px;border-radius:4px;font-size:0.72em;margin-right:2px;">{p.strip()}</span>'
-                                for p in (item.position or "").split("/") if p.strip()
-                            )
-                            attrs_html = "".join(f'<span style="color:#6b7280;font-size:0.76em;margin-right:8px;">{k}: <b style="color:#374151;">{v}</b></span>' for k, v in list((item.attributes or {}).items())[:3])
-                            list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.8em;margin-left:5px;">${item.list_price:.2f}</span>' if item.list_price > item.price else ""
-                            av = (f'<span style="color:#16a34a;font-size:0.76em;font-weight:600;">{item.store_qty} en tienda</span> ' if item.store_qty > 0 else "") + (f'<span style="color:#6b7280;font-size:0.76em;">{item.total_qty} total</span>' if item.total_qty > 0 else "")
-                            pn = f'<span style="color:#6b7280;font-size:0.74em;">Part #: <b>{item.part_number}</b></span>' if item.part_number else ""
-                            img = f'<img src="{item.image_url}" style="width:62px;height:62px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;margin-right:9px;flex-shrink:0;" onerror="this.style.display=\'none\'"/>' if item.image_url else ""
-
                             with col:
-                                st.markdown(f"""
-                                    <div style="border-left:4px solid {bc};border-radius:10px;background:white;padding:10px 12px;margin-bottom:6px;{ring}opacity:{op};">
-                                        <div style="display:flex;align-items:flex-start;">{img}
-                                            <div style="flex:1;min-width:0;">
-                                                <div style="margin-bottom:3px;">{bgs}{pos_html}</div>
-                                                <div style="font-size:0.9em;font-weight:700;color:#111827;line-height:1.3;margin-bottom:1px;">{item.brand} {item.description}</div>
-                                                <div style="margin-bottom:3px;">{pn}</div>
-                                                <div style="margin-bottom:4px;">{attrs_html}</div>
-                                                <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;"><span style="font-size:1.3em;font-weight:800;color:{bc};">${item.price:.2f}</span>{list_html}</div>
-                                                <div>{av}</div><div style="color:#6b7280;font-size:0.74em;">{item.eta}</div>
-                                            </div>
-                                        </div>
-                                    </div>""", unsafe_allow_html=True)
-                                if item.available:
-                                    btn_lbl = "✅ Seleccionado" if is_sel else "Usar para cotizar"
-                                    if st.button(btn_lbl, key=f"sel_tier_{global_idx}", use_container_width=True, type="primary" if is_sel else "secondary"):
-                                        st.session_state.selected_idx = global_idx
-                                        st.rerun()
+                                _part_card(item, global_idx, "sel_tier", scraped_data)
 
             # ---- QUOTE TOTALS ----
             sel_idx = st.session_state.selected_idx
@@ -1047,11 +1017,11 @@ def render_quote():
             # ProVantage badge
             st.markdown(
                 f"""
-                <div style="background:linear-gradient(90deg,#0f172a,#1e293b);border:1px solid #f97316;border-radius:10px;padding:12px 18px;margin:16px 0 8px;display:flex;align-items:center;gap:14px;">
+                <div style="background:linear-gradient(120deg,#1e3a8a,#1d4ed8);border-radius:12px;padding:14px 18px;margin:18px 0 10px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(29,78,216,0.2);">
                     <div style="font-size:2em;">🏆</div>
                     <div>
-                        <div style="color:#fb923c;font-weight:800;font-size:1em;">{T["pv_title"]}</div>
-                        <div style="color:#e2e8f0;font-size:0.85em;">{T["pv_sub"]}</div>
+                        <div style="color:#fbbf24;font-weight:800;font-size:1em;">{T["pv_title"]}</div>
+                        <div style="color:#bfdbfe;font-size:0.85em;">{T["pv_sub"]}</div>
                     </div>
                 </div>
                 """,
