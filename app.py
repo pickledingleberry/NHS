@@ -10,6 +10,12 @@ from diagnostics import lookup_code
 # Initialize SQLite database
 init_db()
 
+SUPPLIER_COLORS = {
+    "AutoZone Pro": "#f97316",
+    "O'Reilly First Call": "#16a34a",
+    "Factory Motor Parts (FMP)": "#2563eb",
+}
+
 st.set_page_config(
     page_title="Taller del Barrio",
     layout="wide",
@@ -732,6 +738,8 @@ def render_quote():
             brand_count = len({p.brand for p in display_items})
             avail_count = sum(1 for p in display_items if p.available)
             st.caption(f"{len(display_items)} resultado(s) · {brand_count} marca(s) · {avail_count} disponible(s)")
+
+            has_vin = bool(vin_in and len(vin_in) == 17 and car_info)
 
             # ── 1. Top 3 verified recommendations (Always visible) ─────────────────
             top_recs = [p for p in display_items if p.fits_vehicle and p.available][:3]
