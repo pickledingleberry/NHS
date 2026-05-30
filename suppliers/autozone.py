@@ -14,6 +14,7 @@ from suppliers.models import PartResult, SupplierSearchResult
 LOGIN_URLS = (
     "https://www.autozonepro.com/ui/login",
     "https://mp.autozonepro.com/ui/login",
+    "https://www.autozonepro.com/ui/login?originalURL=%2Fui%2Fproduct-results",
 )
 
 
