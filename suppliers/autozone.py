@@ -28,7 +28,7 @@ def search_autozone(
         return SupplierSearchResult(store=store, error="Missing AutoZone credentials in .env")
 
     last_error = "AutoZone login page could not be loaded"
-    engines = ("chromium",)  # default back to fast chromium first
+    engines = ("firefox", "chromium")
 
     for engine in engines:
         try:
