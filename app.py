@@ -17,6 +17,8 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 if "quick_part" not in st.session_state:
     st.session_state.quick_part = ""
+if "selected_idx" not in st.session_state:
+    st.session_state.selected_idx = 0
 
 TEXT = {
     "Español": {
@@ -555,15 +557,17 @@ def render_quote():
     st.write("")
     st.markdown(f'<span class="step-badge">{T["step2"]}</span>', unsafe_allow_html=True)
 
-    # Quick-category buttons
-    st.markdown("<p style='color:#6b7280;font-size:0.9em;margin-bottom:6px;'>Toque para buscar rápido / Tap to quick-search:</p>", unsafe_allow_html=True)
-    btn_cols = st.columns(8)
-    for i, (icon, spa, eng, search_val) in enumerate(QUICK_PARTS):
-        label = spa if st.session_state.lang == "Español" else eng
-        with btn_cols[i % 8]:
-            if st.button(f"{icon}\n{label}", key=f"qbtn_{i}", use_container_width=True):
-                st.session_state.quick_part = search_val
-                st.rerun()
+    # Quick-category buttons — 4 per row, clean single-line labels
+    st.markdown("<p style='color:#6b7280;font-size:0.88em;margin-bottom:4px;'>Buscar rápido / Quick search:</p>", unsafe_allow_html=True)
+    rows = [QUICK_PARTS[i:i+4] for i in range(0, len(QUICK_PARTS), 4)]
+    for row in rows:
+        btn_cols = st.columns(len(row))
+        for j, (icon, spa, eng, search_val) in enumerate(row):
+            label = spa if st.session_state.lang == "Español" else eng
+            with btn_cols[j]:
+                if st.button(f"{icon} {label}", key=f"qbtn_{spa}", use_container_width=True):
+                    st.session_state.quick_part = search_val
+                    st.rerun()
 
     part_default = st.session_state.quick_part
     part_in = st.text_input(T["part_lbl"], value=part_default, placeholder=T["part_ph"])
@@ -603,91 +607,97 @@ def render_quote():
                 if not scraped_data:
                     st.error(T["no_results"])
                 else:
+                    st.session_state.selected_idx = min(st.session_state.selected_idx, len(scraped_data) - 1)
                     display_items = [scraped_data[0]] if show_cheapest else scraped_data
 
                     st.markdown(f'<span class="step-badge">{T["step3"]}</span>', unsafe_allow_html=True)
 
-                    if show_cheapest:
-                        st.markdown(f"### {T['cheapest']}")
-
                     brand_count = len({p.brand for p in display_items})
-                    st.caption(f"{len(display_items)} resultado(s) · {brand_count} marca(s) — precio mínimo a máximo")
+                    avail_count = sum(1 for p in display_items if p.available)
+                    st.caption(f"{len(display_items)} resultado(s) · {brand_count} marca(s) · {avail_count} disponible(s)")
 
-                    # 2-column card grid
-                    card_pairs = [display_items[i:i+2] for i in range(0, len(display_items), 2)]
-                    for pair in card_pairs:
-                        grid_cols = st.columns(len(pair))
-                        for col, item in zip(grid_cols, pair):
-                            is_best = item.price == scraped_data[0].price
-                            supplier_colors = {
-                                "AutoZone Pro": "#f97316",
-                                "O'Reilly First Call": "#16a34a",
-                                "Factory Motor Parts (FMP)": "#2563eb",
-                            }
-                            border_color = supplier_colors.get(item.store, "#6b7280")
+                    # ── Price tier grouping ──────────────────────────────────────
+                    avail_parts = [p for p in display_items if p.available]
+                    unavail_parts = [p for p in display_items if not p.available]
 
-                            # Dim cards for unavailable or non-fitting parts
-                            has_vin = vin_in and len(vin_in) == 17 and car_info
-                            card_opacity = "0.45" if not item.available else ("0.7" if has_vin and not item.fits_vehicle else "1")
+                    def assign_tier(parts):
+                        if len(parts) < 4:
+                            return [("Todas las opciones / All options", parts)]
+                        prices = sorted(set(p.price for p in parts))
+                        low_cut = prices[len(prices) // 3]
+                        hi_cut = prices[2 * len(prices) // 3]
+                        budget = [p for p in parts if p.price <= low_cut]
+                        mid = [p for p in parts if low_cut < p.price <= hi_cut]
+                        prem = [p for p in parts if p.price > hi_cut]
+                        tiers = []
+                        if budget:
+                            tiers.append((f"💚 Económico / Budget  —  ${budget[0].price:.2f}–${budget[-1].price:.2f}", budget))
+                        if mid:
+                            tiers.append((f"💛 Intermedio / Mid  —  ${mid[0].price:.2f}–${mid[-1].price:.2f}", mid))
+                        if prem:
+                            tiers.append((f"💎 Premium  —  ${prem[0].price:.2f}–${prem[-1].price:.2f}", prem))
+                        return tiers
 
-                            badge_html = f'<span style="background:{border_color};color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;font-weight:700;margin-right:5px;">{item.store}</span>'
-                            if item.fits_vehicle:
-                                badge_html += '<span style="background:#16a34a;color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">Fits Vehicle</span>'
-                            elif has_vin and not item.fits_vehicle:
-                                badge_html += '<span style="background:#ef4444;color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">No encaja / Does not fit</span>'
-                            if item.store_qty > 0:
-                                badge_html += '<span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">En Tienda</span>'
-                            if not item.available:
-                                badge_html += '<span style="background:#f3f4f6;color:#6b7280;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">Sin stock / Unavailable</span>'
-                            if is_best and not show_cheapest:
-                                badge_html += '<span style="background:#f59e0b;color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;">Mejor precio</span>'
+                    tiers = assign_tier(avail_parts)
+                    if unavail_parts:
+                        tiers.append(("⬇️ Sin stock / Out of stock", unavail_parts))
 
-                            pos_html = ""
-                            for pos in (item.position or "").split("/"):
-                                pos = pos.strip()
-                                if pos:
-                                    pc = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}.get(pos, "#6b7280")
-                                    pos_html += f'<span style="background:{pc};color:white;padding:1px 7px;border-radius:4px;font-size:0.75em;margin-right:3px;">{pos}</span>'
+                    has_vin = bool(vin_in and len(vin_in) == 17 and car_info)
+                    SUPPLIER_COLORS = {"AutoZone Pro": "#f97316", "O'Reilly First Call": "#16a34a", "Factory Motor Parts (FMP)": "#2563eb"}
 
-                            attrs_html = ""
-                            for k, v in list((item.attributes or {}).items())[:4]:
-                                attrs_html += f'<span style="color:#6b7280;font-size:0.8em;margin-right:10px;">{k}: <b style="color:#374151;">{v}</b></span>'
+                    for tier_label, tier_parts in tiers:
+                        with st.expander(tier_label, expanded=("Sin stock" not in tier_label)):
+                            for pair in [tier_parts[i:i+2] for i in range(0, len(tier_parts), 2)]:
+                                gcols = st.columns(len(pair))
+                                for col, item in zip(gcols, pair):
+                                    global_idx = next((i for i, p in enumerate(scraped_data) if p is item), 0)
+                                    is_sel = global_idx == st.session_state.selected_idx
+                                    bc = SUPPLIER_COLORS.get(item.store, "#6b7280")
+                                    ring = f"box-shadow:0 0 0 3px {bc},0 4px 12px rgba(0,0,0,0.1);" if is_sel else "box-shadow:0 2px 6px rgba(0,0,0,0.06);"
+                                    op = "0.4" if not item.available else "1"
 
-                            list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.85em;margin-left:6px;">${item.list_price:.2f}</span>' if item.list_price > item.price else ""
-                            avail_html = ""
-                            if item.store_qty > 0:
-                                avail_html += f'<span style="color:#16a34a;font-size:0.82em;font-weight:600;">{item.store_qty} en tienda</span> '
-                            if item.total_qty > 0:
-                                avail_html += f'<span style="color:#6b7280;font-size:0.82em;">{item.total_qty} total</span>'
-                            pn = f'Part #: <b>{item.part_number}</b>' if item.part_number else ""
-                            img_tag = f'<img src="{item.image_url}" style="width:70px;height:70px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;margin-right:10px;flex-shrink:0;" onerror="this.style.display=\'none\'"/>' if item.image_url else ""
+                                    bgs = f'<span style="background:{bc};color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:700;margin-right:3px;">{item.store}</span>'
+                                    if item.fits_vehicle: bgs += '<span style="background:#16a34a;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">Fits</span>'
+                                    elif has_vin and not item.fits_vehicle: bgs += '<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">No encaja</span>'
+                                    if item.store_qty > 0: bgs += '<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">En Tienda</span>'
+                                    if not item.available: bgs += '<span style="background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:4px;font-size:0.72em;">Sin stock</span>'
 
-                            with col:
-                                st.markdown(
-                                    f"""
-                                    <div style="border-left:4px solid {border_color};border-radius:10px;background:white;padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);height:100%;opacity:{card_opacity};">
-                                        <div style="display:flex;align-items:flex-start;">
-                                            {img_tag}
-                                            <div style="flex:1;min-width:0;">
-                                                <div style="margin-bottom:4px;flex-wrap:wrap;">{badge_html}{pos_html}</div>
-                                                <div style="font-size:0.98em;font-weight:700;color:#111827;line-height:1.3;margin-bottom:2px;">{item.brand} {item.description}</div>
-                                                <div style="color:#6b7280;font-size:0.78em;margin-bottom:4px;">{pn}</div>
-                                                <div style="margin-bottom:6px;">{attrs_html}</div>
-                                                <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:4px;">
-                                                    <span style="font-size:1.4em;font-weight:800;color:{border_color};">${item.price:.2f}</span>
-                                                    {list_html}
+                                    _pos_colors = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}
+                                    pos_html = "".join(
+                                        f'<span style="background:{_pos_colors.get(p.strip(), "#6b7280")};color:white;padding:1px 6px;border-radius:4px;font-size:0.72em;margin-right:2px;">{p.strip()}</span>'
+                                        for p in (item.position or "").split("/") if p.strip()
+                                    )
+                                    attrs_html = "".join(f'<span style="color:#6b7280;font-size:0.76em;margin-right:8px;">{k}: <b style="color:#374151;">{v}</b></span>' for k, v in list((item.attributes or {}).items())[:3])
+                                    list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.8em;margin-left:5px;">${item.list_price:.2f}</span>' if item.list_price > item.price else ""
+                                    av = (f'<span style="color:#16a34a;font-size:0.76em;font-weight:600;">{item.store_qty} en tienda</span> ' if item.store_qty > 0 else "") + (f'<span style="color:#6b7280;font-size:0.76em;">{item.total_qty} total</span>' if item.total_qty > 0 else "")
+                                    pn = f'<span style="color:#6b7280;font-size:0.74em;">Part #: <b>{item.part_number}</b></span>' if item.part_number else ""
+                                    img = f'<img src="{item.image_url}" style="width:62px;height:62px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;margin-right:9px;flex-shrink:0;" onerror="this.style.display=\'none\'"/>' if item.image_url else ""
+
+                                    with col:
+                                        st.markdown(f"""
+                                            <div style="border-left:4px solid {bc};border-radius:10px;background:white;padding:10px 12px;margin-bottom:6px;{ring}opacity:{op};">
+                                                <div style="display:flex;align-items:flex-start;">{img}
+                                                    <div style="flex:1;min-width:0;">
+                                                        <div style="margin-bottom:3px;">{bgs}{pos_html}</div>
+                                                        <div style="font-size:0.9em;font-weight:700;color:#111827;line-height:1.3;margin-bottom:1px;">{item.brand} {item.description}</div>
+                                                        <div style="margin-bottom:3px;">{pn}</div>
+                                                        <div style="margin-bottom:4px;">{attrs_html}</div>
+                                                        <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;"><span style="font-size:1.3em;font-weight:800;color:{bc};">${item.price:.2f}</span>{list_html}</div>
+                                                        <div>{av}</div><div style="color:#6b7280;font-size:0.74em;">{item.eta}</div>
+                                                    </div>
                                                 </div>
-                                                <div>{avail_html}</div>
-                                                <div style="color:#6b7280;font-size:0.78em;">{item.eta}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    """,
-                                    unsafe_allow_html=True,
-                                )
+                                            </div>""", unsafe_allow_html=True)
+                                        if item.available:
+                                            btn_lbl = "✅ Seleccionado" if is_sel else "Usar para cotizar"
+                                            if st.button(btn_lbl, key=f"sel_{global_idx}", use_container_width=True, type="primary" if is_sel else "secondary"):
+                                                st.session_state.selected_idx = global_idx
+                                                st.rerun()
 
                     # ---- QUOTE TOTALS ----
-                    chosen_part_cost = display_items[0].price
+                    sel_idx = min(st.session_state.selected_idx, len(scraped_data) - 1)
+                    chosen_part = scraped_data[sel_idx]
+                    st.info(f"Cotizando con / Quoting: **{chosen_part.brand} {chosen_part.description}** — ${chosen_part.price:.2f} ({chosen_part.store})")
+                    chosen_part_cost = chosen_part.price
                     parts_markup = chosen_part_cost * 1.30
                     calculated_labor = labor_hours * 100.00
                     subtotal = parts_markup + calculated_labor
