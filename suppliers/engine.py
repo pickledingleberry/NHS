@@ -50,21 +50,24 @@ def _brand_diverse_sort(parts: list[PartResult]) -> list[PartResult]:
     1. Parts that fit the vehicle come before parts that don't
     2. Available parts before unavailable (avail_score desc)
     3. Among equal priority: brand diversity (cheapest of each brand interleaved)
+    4. DOES_NOT_FIT parts are grouped separately at the very bottom
     """
     def sort_tier(p: PartResult) -> int:
+        if p.does_not_fit:
+            return 3           # definitely wrong fitment — separate bottom tier
         if not p.available:
-            return 2           # unavailable — always last
+            return 2           # unavailable — always last among possible fits
         if not p.fits_vehicle and p.store_qty == 0 and p.total_qty < 5:
             return 1           # low-confidence fit + low stock — middle
         return 0               # good: available and fits (or universal)
 
     # Split into tiers
-    tiers: dict[int, list[PartResult]] = {0: [], 1: [], 2: []}
+    tiers: dict[int, list[PartResult]] = {0: [], 1: [], 2: [], 3: []}
     for p in parts:
         tiers[sort_tier(p)].append(p)
 
     result: list[PartResult] = []
-    for tier_num in (0, 1, 2):
+    for tier_num in (0, 1, 2, 3):
         result.extend(_interleave_brands(tiers[tier_num]))
     return result
 

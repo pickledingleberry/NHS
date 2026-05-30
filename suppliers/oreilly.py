@@ -259,6 +259,11 @@ def _parse_enterprise_products(data: dict) -> list[dict]:
         img_path = (primary_img.get("mediumUri") or {}).get("path") or ""
         image_url = f"https://www.oreillypro.com{img_path}" if img_path else ""
 
+        # Fits Vehicle evaluation
+        app_status = item.get("applicationStatus") or ""
+        fits = app_status == "VERIFIED"
+        does_not_fit = app_status in ("NOT_VERIFIED", "DOES_NOT_FIT", "NOT_FITS")
+
         results.append({
             "brand": brand,
             "description": description,
@@ -270,7 +275,8 @@ def _parse_enterprise_products(data: dict) -> list[dict]:
             "total_qty": total_qty,
             "position": position,
             "attributes": attrs,
-            "fits_vehicle": item.get("applicationStatus") == "VERIFIED",
+            "fits_vehicle": fits,
+            "does_not_fit": does_not_fit,
             "image_url": image_url,
             "available": available,
             "avail_score": avail_score,
@@ -352,6 +358,7 @@ def search_oreilly(
                 position=row.get("position", ""),
                 attributes=row.get("attributes", {}),
                 fits_vehicle=row.get("fits_vehicle", False),
+                does_not_fit=row.get("does_not_fit", False),
                 image_url=row.get("image_url", ""),
                 available=row.get("available", True),
                 avail_score=row.get("avail_score", 0),

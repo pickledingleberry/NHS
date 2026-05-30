@@ -439,6 +439,7 @@ def search_autozone(
                 position=row.get("position", ""),
                 attributes=row.get("attributes", {}),
                 fits_vehicle=row.get("fits_vehicle", False),
+                does_not_fit=row.get("does_not_fit", False),
                 image_url=row.get("image_url", ""),
                 available=row.get("available", True),
                 avail_score=row.get("avail_score", 0),

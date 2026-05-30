@@ -617,8 +617,9 @@ def render_quote():
                     st.caption(f"{len(display_items)} resultado(s) · {brand_count} marca(s) · {avail_count} disponible(s)")
 
                     # ── Price tier grouping ──────────────────────────────────────
-                    avail_parts = [p for p in display_items if p.available]
-                    unavail_parts = [p for p in display_items if not p.available]
+                    avail_parts = [p for p in display_items if p.available and not p.does_not_fit]
+                    unavail_parts = [p for p in display_items if not p.available and not p.does_not_fit]
+                    wrong_fit_parts = [p for p in display_items if p.does_not_fit]
 
                     def assign_tier(parts):
                         if len(parts) < 4:
@@ -641,12 +642,15 @@ def render_quote():
                     tiers = assign_tier(avail_parts)
                     if unavail_parts:
                         tiers.append(("⬇️ Sin stock / Out of stock", unavail_parts))
+                    if wrong_fit_parts:
+                        tiers.append(("❌ No encajan / Does not fit vehicle", wrong_fit_parts))
 
                     has_vin = bool(vin_in and len(vin_in) == 17 and car_info)
                     SUPPLIER_COLORS = {"AutoZone Pro": "#f97316", "O'Reilly First Call": "#16a34a", "Factory Motor Parts (FMP)": "#2563eb"}
 
                     for tier_label, tier_parts in tiers:
-                        with st.expander(tier_label, expanded=("Sin stock" not in tier_label)):
+                        is_collapsed = any(k in tier_label for k in ("Sin stock", "No encajan"))
+                        with st.expander(tier_label, expanded=not is_collapsed):
                             for pair in [tier_parts[i:i+2] for i in range(0, len(tier_parts), 2)]:
                                 gcols = st.columns(len(pair))
                                 for col, item in zip(gcols, pair):
