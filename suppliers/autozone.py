@@ -110,10 +110,16 @@ def _get_vehicle_data(page, vin: str) -> dict:
                 );
                 if (!r.ok) return {{}};
                 const data = await r.json();
-                // Flatten nested structure if needed
-                if (data.vehicleInfo) return data.vehicleInfo;
-                if (data.vehicle) return data.vehicle;
-                return data;
+                
+                // Construct a flat, clean vehicle profile
+                const res = {{
+                    makeId: data.makeId || (data.vehicleInfo ? data.vehicleInfo.makeId : "") || "",
+                    modelId: data.modelId || (data.vehicleInfo ? data.vehicleInfo.modelId : "") || "",
+                    year: data.year || (data.vehicleInfo ? data.vehicleInfo.year : "") || "",
+                    vehicleTypeId: data.vehicleTypeId || (data.vehicleInfo ? data.vehicleInfo.vehicleTypeId : "5") || "5",
+                    answers: data.answers || (data.vehicleInfo ? data.vehicleInfo.answers : null) || {{}}
+                }};
+                return res;
             }} catch(e) {{ return {{_error: e.message}}; }}
         }}
     """)
@@ -197,11 +203,11 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
         params["customerId"] = session["customerId"]
 
     # Add vehicle parameters if available
-    make_id = vehicle.get("makeId") or vehicle.get("make", {}).get("makeId")
-    model_id = vehicle.get("modelId") or vehicle.get("model", {}).get("modelId")
+    make_id = vehicle.get("makeId")
+    model_id = vehicle.get("modelId")
     year = vehicle.get("year")
     vehicle_type_id = vehicle.get("vehicleTypeId", "5")
-    vehicle_questions = vehicle.get("vehicleQuestions") or _build_vehicle_questions(vehicle)
+    vehicle_questions = _build_vehicle_questions(vehicle)
 
     if make_id and model_id and year:
         params.update({
@@ -209,6 +215,7 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
             "modelId": str(model_id),
             "year": str(year),
             "vehicleTypeId": str(vehicle_type_id),
+            "ignoreVehicleSpecificProductsCheck": "false",
         })
         if vehicle_questions:
             params["vehicleQuestions"] = vehicle_questions
