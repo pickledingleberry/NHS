@@ -652,7 +652,7 @@ def render_quote():
     if scraped_data:
         # Filter out non-fitting if toggle is enabled (strictly show only verified fitting recommendations)
         if st.session_state.hide_non_fitting and vin_in and len(vin_in) == 17:
-            scraped_data = [p for p in scraped_data if p.fits_vehicle]
+            scraped_data = [p for p in scraped_data if p.fits_vehicle and not p.does_not_fit]
 
         if not scraped_data:
             st.warning("No se encontraron partes compatibles con este VIN / No compatible parts found for this VIN")
@@ -666,14 +666,67 @@ def render_quote():
             avail_count = sum(1 for p in display_items if p.available)
             st.caption(f"{len(display_items)} resultado(s) · {brand_count} marca(s) · {avail_count} disponible(s)")
 
-            # ── Price tier grouping ──────────────────────────────────────
-            avail_parts = [p for p in display_items if p.available and not p.does_not_fit]
-            unavail_parts = [p for p in display_items if not p.available and not p.does_not_fit]
-            wrong_fit_parts = [p for p in display_items if p.does_not_fit]
+            # ── 1. Top 3 verified recommendations (Always visible) ─────────────────
+            top_recs = [p for p in display_items if p.fits_vehicle and p.available][:3]
+            other_items = [p for p in display_items if p not in top_recs]
+
+            if top_recs:
+                st.markdown("<h4 style='color:#1e3a8a;margin-bottom:10px;'>⭐ Recomendaciones principales / Top Recommendations</h4>", unsafe_allow_html=True)
+                for pair in [top_recs[i:i+2] for i in range(0, len(top_recs), 2)]:
+                    gcols = st.columns(len(pair))
+                    for col, item in zip(gcols, pair):
+                        global_idx = next((i for i, p in enumerate(scraped_data) if p is item), 0)
+                        is_sel = global_idx == st.session_state.selected_idx
+                        bc = SUPPLIER_COLORS.get(item.store, "#6b7280")
+                        ring = f"box-shadow:0 0 0 3px {bc},0 4px 12px rgba(0,0,0,0.1);" if is_sel else "box-shadow:0 2px 6px rgba(0,0,0,0.06);"
+                        
+                        bgs = f'<span style="background:{bc};color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;font-weight:700;margin-right:3px;">{item.store}</span>'
+                        bgs += '<span style="background:#16a34a;color:white;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">Fits Vehicle</span>'
+                        if item.store_qty > 0:
+                            bgs += '<span style="background:#dcfce7;color:#15803d;padding:2px 6px;border-radius:4px;font-size:0.72em;margin-right:3px;">En Tienda</span>'
+                        
+                        pos_html = ""
+                        for pos in (item.position or "").split("/"):
+                            p = pos.strip()
+                            if p:
+                                pc = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}.get(p, "#6b7280")
+                                pos_html += f'<span style="background:{pc};color:white;padding:1px 6px;border-radius:4px;font-size:0.72em;margin-right:2px;">{p}</span>'
+
+                        attrs_html = "".join(f'<span style="color:#6b7280;font-size:0.76em;margin-right:8px;">{k}: <b style="color:#374151;">{v}</b></span>' for k, v in list((item.attributes or {}).items())[:3])
+                        list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.8em;margin-left:5px;">${item.list_price:.2f}</span>' if item.list_price > item.price else ""
+                        av = (f'<span style="color:#16a34a;font-size:0.76em;font-weight:600;">{item.store_qty} en tienda</span> ' if item.store_qty > 0 else "") + (f'<span style="color:#6b7280;font-size:0.76em;">{item.total_qty} total</span>' if item.total_qty > 0 else "")
+                        pn = f'<span style="color:#6b7280;font-size:0.74em;">Part #: <b>{item.part_number}</b></span>' if item.part_number else ""
+                        img = f'<img src="{item.image_url}" style="width:62px;height:62px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;margin-right:9px;flex-shrink:0;" onerror="this.style.display=\'none\'"/>' if item.image_url else ""
+
+                        with col:
+                            st.markdown(f"""
+                                <div style="border-left:4px solid {bc};border-radius:10px;background:white;padding:10px 12px;margin-bottom:6px;{ring}">
+                                    <div style="display:flex;align-items:flex-start;">{img}
+                                        <div style="flex:1;min-width:0;">
+                                            <div style="margin-bottom:3px;">{bgs}{pos_html}</div>
+                                            <div style="font-size:0.9em;font-weight:700;color:#111827;line-height:1.3;margin-bottom:1px;">{item.brand} {item.description}</div>
+                                            <div style="margin-bottom:3px;">{pn}</div>
+                                            <div style="margin-bottom:4px;">{attrs_html}</div>
+                                            <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:2px;"><span style="font-size:1.3em;font-weight:800;color:{bc};">${item.price:.2f}</span>{list_html}</div>
+                                            <div>{av}</div><div style="color:#6b7280;font-size:0.74em;">{item.eta}</div>
+                                        </div>
+                                    </div>
+                                </div>""", unsafe_allow_html=True)
+                            btn_lbl = "✅ Seleccionado" if is_sel else "Usar para cotizar"
+                            if st.button(btn_lbl, key=f"sel_top_{global_idx}", use_container_width=True, type="primary" if is_sel else "secondary"):
+                                st.session_state.selected_idx = global_idx
+                                st.rerun()
+
+            # ── 2. Collapsible Price Tiers (All other options) ────────────────────
+            avail_parts = [p for p in other_items if p.available and not p.does_not_fit]
+            unavail_parts = [p for p in other_items if not p.available and not p.does_not_fit]
+            wrong_fit_parts = [p for p in other_items if p.does_not_fit]
 
             def assign_tier(parts):
+                if not parts:
+                    return []
                 if len(parts) < 4:
-                    return [("Todas las opciones / All options", parts)]
+                    return [("Otras opciones / Other options", parts)]
                 prices = sorted(set(p.price for p in parts))
                 low_cut = prices[len(prices) // 3]
                 hi_cut = prices[2 * len(prices) // 3]
@@ -694,9 +747,6 @@ def render_quote():
                 tiers.append(("⬇️ Sin stock / Out of stock", unavail_parts))
             if wrong_fit_parts:
                 tiers.append(("❌ No encajan / Does not fit vehicle", wrong_fit_parts))
-
-            has_vin = bool(vin_in and len(vin_in) == 17 and car_info)
-            SUPPLIER_COLORS = {"AutoZone Pro": "#f97316", "O'Reilly First Call": "#16a34a", "Factory Motor Parts (FMP)": "#2563eb"}
 
             for tier_label, tier_parts in tiers:
                 is_collapsed = any(k in tier_label for k in ("Sin stock", "No encajan"))
@@ -743,7 +793,7 @@ def render_quote():
                                     </div>""", unsafe_allow_html=True)
                                 if item.available:
                                     btn_lbl = "✅ Seleccionado" if is_sel else "Usar para cotizar"
-                                    if st.button(btn_lbl, key=f"sel_{global_idx}", use_container_width=True, type="primary" if is_sel else "secondary"):
+                                    if st.button(btn_lbl, key=f"sel_tier_{global_idx}", use_container_width=True, type="primary" if is_sel else "secondary"):
                                         st.session_state.selected_idx = global_idx
                                         st.rerun()
 
