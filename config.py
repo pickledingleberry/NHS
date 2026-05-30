@@ -43,7 +43,7 @@ class AppConfig:
         lines = []
         for label, creds in (
             ("AutoZone Pro", self.autozone),
-            ("FMP Delivers", self.fmp),
+            # ("FMP Delivers", self.fmp),
             ("O'Reilly First Call", self.oreilly),
         ):
             state = "Ready" if creds.configured else "Not configured"
