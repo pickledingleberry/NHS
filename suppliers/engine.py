@@ -39,6 +39,29 @@ def search_all_suppliers(
             if supplier_result.error:
                 errors.append(f"{supplier_result.store}: {supplier_result.error}")
 
-    # Sort by price; surface in-stock items first within same price range
-    results.sort(key=lambda r: (r.price, 0 if r.store_qty > 0 else 1))
+    # Brand-diverse sort: interleave brands so variety shows up before
+    # showing multiple options from the same brand
+    results = _brand_diverse_sort(results)
     return results, errors
+
+
+def _brand_diverse_sort(parts: list[PartResult]) -> list[PartResult]:
+    """Interleave brands so the list shows variety instead of one brand repeated.
+    Within each brand, sort cheapest first. Brands ordered by their cheapest option."""
+    by_brand: dict[str, list[PartResult]] = {}
+    for p in parts:
+        key = p.brand or "Other"
+        by_brand.setdefault(key, []).append(p)
+
+    for brand in by_brand:
+        by_brand[brand].sort(key=lambda x: (x.price, 0 if x.store_qty > 0 else 1))
+
+    brands_ordered = sorted(by_brand.keys(), key=lambda b: by_brand[b][0].price)
+    max_len = max(len(v) for v in by_brand.values()) if by_brand else 0
+
+    diverse: list[PartResult] = []
+    for i in range(max_len):
+        for brand in brands_ordered:
+            if i < len(by_brand[brand]):
+                diverse.append(by_brand[brand][i])
+    return diverse

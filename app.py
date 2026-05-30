@@ -15,6 +15,8 @@ if "lang" not in st.session_state:
     st.session_state.lang = "Español"
 if "page" not in st.session_state:
     st.session_state.page = "home"
+if "quick_part" not in st.session_state:
+    st.session_state.quick_part = ""
 
 TEXT = {
     "Español": {
@@ -408,9 +410,11 @@ def decode_vin(vin):
     url = f"https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/{vin}?format=json"
     try:
         results = requests.get(url, timeout=10).json().get("Results", [])
-        car = {"Year": "", "Make": "", "Model": "", "Engine": ""}
+        car = {"Year": "", "Make": "", "Model": "", "Engine": "", "Cylinders": "", "EngineL": 0.0}
         for item in results:
             var, val = item.get("Variable"), item.get("Value")
+            if not val or val in ("Not Applicable", "null"):
+                continue
             if var == "Model Year":
                 car["Year"] = val
             elif var == "Make":
@@ -418,12 +422,91 @@ def decode_vin(vin):
             elif var == "Model":
                 car["Model"] = val
             elif var == "Displacement (L)":
-                car["Engine"] = f"{val}L" if val else ""
+                car["Engine"] = f"{val}L"
+                try:
+                    car["EngineL"] = float(val)
+                except ValueError:
+                    pass
+            elif var == "Engine Number of Cylinders":
+                car["Cylinders"] = val
         if car["Year"] and car["Make"]:
             return car
     except Exception:
         return None
     return None
+
+
+def get_tech_specs(car: dict) -> dict:
+    """Estimate common service specs from VIN decode data."""
+    engine_l = car.get("EngineL", 0.0)
+    year = int(car.get("Year") or 0)
+    make = (car.get("Make") or "").title()
+
+    # Oil capacity estimate by displacement
+    if engine_l <= 1.6:
+        oil_qt = "3.5–4.0"
+    elif engine_l <= 2.0:
+        oil_qt = "4.0–4.5"
+    elif engine_l <= 2.5:
+        oil_qt = "4.5–5.0"
+    elif engine_l <= 3.5:
+        oil_qt = "5.0–6.0"
+    elif engine_l <= 5.0:
+        oil_qt = "6.0–7.0"
+    else:
+        oil_qt = "7.0–8.0"
+
+    # Oil viscosity by year
+    if year >= 2015:
+        oil_type = "0W-20" if engine_l <= 2.5 else "5W-20"
+    elif year >= 2000:
+        oil_type = "5W-30"
+    else:
+        oil_type = "10W-30"
+
+    # Lug nut torque by make (approximate)
+    torque_map = {
+        "Toyota": "76–80 ft-lbs", "Lexus": "76–80 ft-lbs",
+        "Honda": "80 ft-lbs", "Acura": "80–85 ft-lbs",
+        "Nissan": "80–83 ft-lbs", "Infiniti": "80–95 ft-lbs",
+        "Ford": "100–150 ft-lbs", "Lincoln": "100–150 ft-lbs",
+        "Chevrolet": "100–140 ft-lbs", "Gmc": "100–140 ft-lbs",
+        "Dodge": "95–130 ft-lbs", "Chrysler": "95–110 ft-lbs",
+        "Jeep": "95–100 ft-lbs", "Ram": "130–135 ft-lbs",
+        "Bmw": "88–103 ft-lbs", "Mercedes-Benz": "88–110 ft-lbs",
+        "Audi": "89–96 ft-lbs", "Volkswagen": "88–96 ft-lbs",
+        "Hyundai": "65–80 ft-lbs", "Kia": "65–80 ft-lbs",
+        "Subaru": "89 ft-lbs", "Mazda": "80–88 ft-lbs",
+        "Mitsubishi": "72–80 ft-lbs",
+    }
+    torque = torque_map.get(make, "80–100 ft-lbs")
+
+    return {
+        "oil_qty": f"{oil_qt} qts",
+        "oil_type": oil_type,
+        "torque": torque,
+    }
+
+
+# ---- Part category quick buttons ----
+QUICK_PARTS = [
+    ("🛑", "Balatas", "Brake Pads", "balatas"),
+    ("💿", "Discos", "Rotors", "discos"),
+    ("🔧", "Balatas + Discos", "Brake Kit", "brake kit"),
+    ("🛢️", "Filtro de Aceite", "Oil Filter", "oil filter"),
+    ("💨", "Filtro de Aire", "Air Filter", "air filter"),
+    ("⚡", "Bujías", "Spark Plugs", "spark plugs"),
+    ("🔋", "Batería", "Battery", "battery"),
+    ("⚙️", "Alternador", "Alternator", "alternator"),
+    ("🚗", "Marcha", "Starter", "starter"),
+    ("🌡️", "Termostato", "Thermostat", "thermostat"),
+    ("💧", "Bomba de Agua", "Water Pump", "water pump"),
+    ("〰️", "Banda", "Belt", "serpentine belt"),
+    ("📡", "Sensor O2", "O2 Sensor", "oxygen sensor"),
+    ("🔩", "Amortiguadores", "Shocks/Struts", "shocks"),
+    ("🔄", "Clutch", "Clutch", "clutch"),
+    ("🔀", "Eje CV", "CV Axle", "cv axle"),
+]
 
 
 def render_quote():
@@ -433,32 +516,70 @@ def render_quote():
     else:
         st.warning(T["env_missing"])
 
-    st.markdown(f'<span class="step-badge">{T["step1"]}</span>', unsafe_allow_html=True)
-    vin_in = st.text_input(T["vin_lbl"], max_chars=17, placeholder="1HGBH41JXMN109186").upper()
-    st.markdown(f'<p class="hint">{T["vin_hint"]}</p>', unsafe_allow_html=True)
+    # ── Step 1: VIN ────────────────────────────────────────────────────────
+    vin_col, spec_col = st.columns([2, 1])
+    with vin_col:
+        st.markdown(f'<span class="step-badge">{T["step1"]}</span>', unsafe_allow_html=True)
+        vin_in = st.text_input(T["vin_lbl"], max_chars=17, placeholder="1HGBH41JXMN109186").upper()
+        st.markdown(f'<p class="hint">{T["vin_hint"]}</p>', unsafe_allow_html=True)
 
     car_info = None
     if vin_in and len(vin_in) == 17:
         car_info = decode_vin(vin_in)
-        if car_info:
-            st.success(
-                f"{T['vin_ok']} **{car_info['Year']} {car_info['Make']} {car_info['Model']}** {car_info['Engine']}"
-            )
-        else:
-            st.error(T["vin_bad"])
+        with vin_col:
+            if car_info:
+                st.success(f"{T['vin_ok']} **{car_info['Year']} {car_info['Make']} {car_info['Model']}** {car_info['Engine']}")
+            else:
+                st.error(T["vin_bad"])
 
+        # Tech specs card
+        if car_info:
+            specs = get_tech_specs(car_info)
+            with spec_col:
+                st.markdown(
+                    f"""
+                    <div style="background:#f0f9ff;border:2px solid #bae6fd;border-radius:12px;padding:14px 16px;margin-top:28px;">
+                        <div style="font-weight:700;color:#0369a1;margin-bottom:8px;">Datos Técnicos / Tech Specs</div>
+                        <table style="width:100%;font-size:0.88em;border-collapse:collapse;">
+                            <tr><td style="color:#6b7280;padding:3px 0;">Aceite / Oil</td><td style="font-weight:600;text-align:right;">{specs['oil_type']}</td></tr>
+                            <tr><td style="color:#6b7280;padding:3px 0;">Capacidad / Capacity</td><td style="font-weight:600;text-align:right;">{specs['oil_qty']}</td></tr>
+                            <tr><td style="color:#6b7280;padding:3px 0;">Torque llantas / Lug nuts</td><td style="font-weight:600;text-align:right;">{specs['torque']}</td></tr>
+                        </table>
+                        <div style="font-size:0.72em;color:#94a3b8;margin-top:6px;">* Estimado — verify with shop manual</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    # ── Step 2: Part Search + Quick Buttons ────────────────────────────────
     st.write("")
     st.markdown(f'<span class="step-badge">{T["step2"]}</span>', unsafe_allow_html=True)
-    part_in = st.text_input(T["part_lbl"], placeholder=T["part_ph"])
+
+    # Quick-category buttons
+    st.markdown("<p style='color:#6b7280;font-size:0.9em;margin-bottom:6px;'>Toque para buscar rápido / Tap to quick-search:</p>", unsafe_allow_html=True)
+    btn_cols = st.columns(8)
+    for i, (icon, spa, eng, search_val) in enumerate(QUICK_PARTS):
+        label = spa if st.session_state.lang == "Español" else eng
+        with btn_cols[i % 8]:
+            if st.button(f"{icon}\n{label}", key=f"qbtn_{i}", use_container_width=True):
+                st.session_state.quick_part = search_val
+                st.rerun()
+
+    part_default = st.session_state.quick_part
+    part_in = st.text_input(T["part_lbl"], value=part_default, placeholder=T["part_ph"])
+    if part_in != part_default:
+        st.session_state.quick_part = part_in
     st.markdown(f'<p class="hint">{T["part_hint"]}</p>', unsafe_allow_html=True)
 
-    col_a, col_b = st.columns(2)
-    with col_a:
+    # ── Controls row ────────────────────────────────────────────────────────
+    ctrl_a, ctrl_b, ctrl_c, ctrl_d = st.columns(4)
+    with ctrl_a:
         show_cheapest = st.toggle(T["toggle_cheap"], value=False)
+    with ctrl_b:
         labor_hours = st.number_input(T["labor_lbl"], min_value=0.0, max_value=20.0, value=1.0, step=0.5)
-        st.caption(T["labor_hint"])
-    with col_b:
+    with ctrl_c:
         tax_rate = st.number_input(T["tax_lbl"], min_value=0.0, max_value=25.0, value=0.0, step=0.25, format="%.2f")
+    with ctrl_d:
         discount_type = st.radio(T["discount_lbl"], [T["discount_type_pct"], T["discount_type_fixed"]], horizontal=True)
         discount_val = st.number_input("", min_value=0.0, max_value=10000.0, value=0.0, step=1.0, label_visibility="collapsed")
 
@@ -489,75 +610,73 @@ def render_quote():
                     if show_cheapest:
                         st.markdown(f"### {T['cheapest']}")
 
-                    st.caption(f"{len(display_items)} resultado(s) / results — ordenado por precio / sorted by price")
+                    brand_count = len({p.brand for p in display_items})
+                    st.caption(f"{len(display_items)} resultado(s) · {brand_count} marca(s) — precio mínimo a máximo")
 
-                    for item in display_items:
-                        is_best = item.price == scraped_data[0].price
-                        supplier_colors = {
-                            "AutoZone Pro": "#f97316",
-                            "O'Reilly First Call": "#16a34a",
-                            "Factory Motor Parts (FMP)": "#2563eb",
-                        }
-                        border_color = supplier_colors.get(item.store, "#6b7280")
+                    # 2-column card grid
+                    card_pairs = [display_items[i:i+2] for i in range(0, len(display_items), 2)]
+                    for pair in card_pairs:
+                        grid_cols = st.columns(len(pair))
+                        for col, item in zip(grid_cols, pair):
+                            is_best = item.price == scraped_data[0].price
+                            supplier_colors = {
+                                "AutoZone Pro": "#f97316",
+                                "O'Reilly First Call": "#16a34a",
+                                "Factory Motor Parts (FMP)": "#2563eb",
+                            }
+                            border_color = supplier_colors.get(item.store, "#6b7280")
 
-                        badge_html = f'<span style="background:{border_color};color:white;padding:2px 8px;border-radius:4px;font-size:0.78em;font-weight:700;margin-right:6px;">{item.store}</span>'
-                        if item.fits_vehicle:
-                            badge_html += '<span style="background:#16a34a;color:white;padding:2px 8px;border-radius:4px;font-size:0.78em;margin-right:4px;">Fits Vehicle</span>'
-                        if item.store_qty > 0:
-                            badge_html += '<span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-size:0.78em;margin-right:4px;">En Tienda</span>'
-                        if is_best and not show_cheapest:
-                            badge_html += '<span style="background:#f59e0b;color:white;padding:2px 8px;border-radius:4px;font-size:0.78em;">Mejor precio</span>'
+                            badge_html = f'<span style="background:{border_color};color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;font-weight:700;margin-right:5px;">{item.store}</span>'
+                            if item.fits_vehicle:
+                                badge_html += '<span style="background:#16a34a;color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">Fits Vehicle</span>'
+                            if item.store_qty > 0:
+                                badge_html += '<span style="background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:4px;font-size:0.75em;margin-right:4px;">En Tienda</span>'
+                            if is_best and not show_cheapest:
+                                badge_html += '<span style="background:#f59e0b;color:white;padding:2px 7px;border-radius:4px;font-size:0.75em;">Mejor precio</span>'
 
-                        pos_html = ""
-                        for pos in (item.position or "").split("/"):
-                            pos = pos.strip()
-                            if pos:
-                                pos_color = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}.get(pos, "#6b7280")
-                                pos_html += f'<span style="background:{pos_color};color:white;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:4px;">{pos}</span>'
+                            pos_html = ""
+                            for pos in (item.position or "").split("/"):
+                                pos = pos.strip()
+                                if pos:
+                                    pc = {"Front": "#3b82f6", "Rear": "#8b5cf6", "Front and Rear": "#0891b2"}.get(pos, "#6b7280")
+                                    pos_html += f'<span style="background:{pc};color:white;padding:1px 7px;border-radius:4px;font-size:0.75em;margin-right:3px;">{pos}</span>'
 
-                        attrs_html = ""
-                        for k, v in (item.attributes or {}).items():
-                            attrs_html += f'<span style="color:#6b7280;font-size:0.82em;margin-right:12px;">{k}: <strong style="color:#374151;">{v}</strong></span>'
+                            attrs_html = ""
+                            for k, v in list((item.attributes or {}).items())[:4]:
+                                attrs_html += f'<span style="color:#6b7280;font-size:0.8em;margin-right:10px;">{k}: <b style="color:#374151;">{v}</b></span>'
 
-                        list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.88em;margin-left:8px;">Lista: ${item.list_price:.2f}</span>' if item.list_price > item.price else ""
+                            list_html = f'<span style="color:#9ca3af;text-decoration:line-through;font-size:0.85em;margin-left:6px;">${item.list_price:.2f}</span>' if item.list_price > item.price else ""
+                            avail_html = ""
+                            if item.store_qty > 0:
+                                avail_html += f'<span style="color:#16a34a;font-size:0.82em;font-weight:600;">{item.store_qty} en tienda</span> '
+                            if item.total_qty > 0:
+                                avail_html += f'<span style="color:#6b7280;font-size:0.82em;">{item.total_qty} total</span>'
+                            pn = f'Part #: <b>{item.part_number}</b>' if item.part_number else ""
+                            img_tag = f'<img src="{item.image_url}" style="width:70px;height:70px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;margin-right:10px;flex-shrink:0;" onerror="this.style.display=\'none\'"/>' if item.image_url else ""
 
-                        avail_html = ""
-                        if item.store_qty > 0:
-                            avail_html += f'<span style="color:#16a34a;font-size:0.85em;font-weight:600;">{item.store_qty} en tienda &nbsp;</span>'
-                        if item.total_qty > 0:
-                            avail_html += f'<span style="color:#6b7280;font-size:0.85em;">{item.total_qty} total</span>'
-
-                        part_num_html = f'<span style="color:#6b7280;font-size:0.82em;">Part #: <strong>{item.part_number}</strong></span>' if item.part_number else ""
-
-                        img_html = f'<img src="{item.image_url}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;margin-right:14px;flex-shrink:0;" onerror="this.style.display=\'none\'"/>' if item.image_url else '<div style="width:80px;height:80px;background:#f3f4f6;border-radius:6px;margin-right:14px;flex-shrink:0;"></div>'
-
-                        st.markdown(
-                            f"""
-                            <div style="border-left:4px solid {border_color};border-radius:12px;background:white;padding:14px 18px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-                                <div style="display:flex;align-items:flex-start;gap:4px;">
-                                    {img_html}
-                                    <div style="flex:1;min-width:0;">
-                                        <div style="margin-bottom:5px;">{badge_html}{pos_html}</div>
-                                        <div style="font-size:1.05em;font-weight:700;color:#111827;margin-bottom:2px;">{item.brand} {item.description}</div>
-                                        <div style="margin-bottom:5px;">{part_num_html}</div>
-                                        <div style="margin-bottom:8px;flex-wrap:wrap;">{attrs_html}</div>
-                                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-                                            <div>
-                                                <span style="font-size:1.5em;font-weight:800;color:{border_color};">${item.price:.2f}</span>
-                                                {list_html}
-                                            </div>
-                                            <div style="text-align:right;">
-                                                <div style="font-weight:600;color:#374151;font-size:0.9em;">{item.store}</div>
+                            with col:
+                                st.markdown(
+                                    f"""
+                                    <div style="border-left:4px solid {border_color};border-radius:10px;background:white;padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);height:100%;">
+                                        <div style="display:flex;align-items:flex-start;">
+                                            {img_tag}
+                                            <div style="flex:1;min-width:0;">
+                                                <div style="margin-bottom:4px;flex-wrap:wrap;">{badge_html}{pos_html}</div>
+                                                <div style="font-size:0.98em;font-weight:700;color:#111827;line-height:1.3;margin-bottom:2px;">{item.brand} {item.description}</div>
+                                                <div style="color:#6b7280;font-size:0.78em;margin-bottom:4px;">{pn}</div>
+                                                <div style="margin-bottom:6px;">{attrs_html}</div>
+                                                <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:4px;">
+                                                    <span style="font-size:1.4em;font-weight:800;color:{border_color};">${item.price:.2f}</span>
+                                                    {list_html}
+                                                </div>
                                                 <div>{avail_html}</div>
-                                                <div style="color:#6b7280;font-size:0.82em;">{item.eta}</div>
+                                                <div style="color:#6b7280;font-size:0.78em;">{item.eta}</div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+                                    """,
+                                    unsafe_allow_html=True,
+                                )
 
                     # ---- QUOTE TOTALS ----
                     chosen_part_cost = display_items[0].price
@@ -575,6 +694,21 @@ def render_quote():
                     # Tax
                     tax_amount = after_discount * (tax_rate / 100.0)
                     grand_total = after_discount + tax_amount
+
+                    # ProVantage badge
+                    st.markdown(
+                        """
+                        <div style="background:linear-gradient(90deg,#1e3a8a,#2563eb);border-radius:10px;padding:12px 18px;margin:16px 0 8px;display:flex;align-items:center;gap:14px;">
+                            <div style="font-size:2em;">🏆</div>
+                            <div>
+                                <div style="color:#fbbf24;font-weight:800;font-size:1em;">ProVantage Auto Repair Network</div>
+                                <div style="color:white;font-size:0.85em;">Garantía Extendida Incluida — Válida en Todo el País</div>
+                                <div style="color:#93c5fd;font-size:0.78em;">Extended Nationwide Warranty Included on this Quote</div>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
                     st.markdown(f"### {T['summary']}")
                     col_l, col_r = st.columns(2)
