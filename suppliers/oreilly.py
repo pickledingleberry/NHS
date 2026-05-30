@@ -49,6 +49,8 @@ PART_TYPE_MAP = [
 
 def _map_query_to_part_type_id(query: str) -> list[str]:
     q = query.lower()
+    if any(k in q for k in ("kit", "set", "balatas + discos", "balata + disco", "brake kit", "brakes and rotors")):
+        return ["03351", "00896"] # merge pads and rotors for O'Reilly too
     for keywords, pt_id in PART_TYPE_MAP:
         if any(k in q for k in keywords):
             return [pt_id]

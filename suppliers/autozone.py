@@ -483,10 +483,15 @@ def search_autozone(
 def _fallback_part_groups(query: str) -> list[str]:
     """Map common part names to AutoZone partGroupIds when API search fails."""
     q = query.lower()
+    
+    # If looking for a kit (Balatas + Discos), merge both pads and rotors categories
+    # so individual Duralast Gold pads and rotors show up instead of just PowerStop kits.
+    if any(k in q for k in ("kit", "set", "balatas + discos", "balata + disco", "brake kit", "brakes and rotors")):
+        return ["azpg4204", "azpg1368"]
+        
     mapping = [
         (["brake pad", "balata", "freno delantero", "front brake"], ["azpg4204"]),
         (["rotor", "disco", "brake rotor"], ["azpg1368"]),
-        (["brake kit", "brake set", "kit frenos"], ["60407"]),
         (["oil filter", "filtro aceite", "filtro de aceite"], ["azpg1294"]),
         (["air filter", "filtro aire", "filtro de aire"], ["azpg1296"]),
         (["spark plug", "bujia", "bujía"], ["azpg1302"]),
