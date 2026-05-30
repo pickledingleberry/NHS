@@ -111,13 +111,23 @@ def _get_vehicle_data(page, vin: str) -> dict:
                 if (!r.ok) return {{}};
                 const data = await r.json();
                 
-                // Construct a flat, clean vehicle profile
+                // Deep search for makeId, modelId, year, and answers
+                const findKey = (obj, key) => {{
+                    if (!obj || typeof obj !== 'object') return null;
+                    if (key in obj) return obj[key];
+                    for (const k in obj) {{
+                        const found = findKey(obj[k], key);
+                        if (found !== null) return found;
+                    }}
+                    return null;
+                }};
+
                 const res = {{
-                    makeId: data.makeId || (data.vehicleInfo ? data.vehicleInfo.makeId : "") || "",
-                    modelId: data.modelId || (data.vehicleInfo ? data.vehicleInfo.modelId : "") || "",
-                    year: data.year || (data.vehicleInfo ? data.vehicleInfo.year : "") || "",
-                    vehicleTypeId: data.vehicleTypeId || (data.vehicleInfo ? data.vehicleInfo.vehicleTypeId : "5") || "5",
-                    answers: data.answers || (data.vehicleInfo ? data.vehicleInfo.answers : null) || {{}}
+                    makeId: findKey(data, 'makeId') || "",
+                    modelId: findKey(data, 'modelId') || "",
+                    year: findKey(data, 'year') || findKey(data, 'modelYear') || "",
+                    vehicleTypeId: findKey(data, 'vehicleTypeId') || "5",
+                    answers: findKey(data, 'answers') || findKey(data, 'vehicleAnswers') || {{}}
                 }};
                 return res;
             }} catch(e) {{ return {{_error: e.message}}; }}
@@ -294,9 +304,19 @@ def _get_products(page, part_group_id: str, session: dict, vehicle: dict) -> lis
         position = " / ".join(position_parts) if position_parts else ""
 
         fitment = sku.get("vehicleFitment") or {}
-        vehicle_fit = fitment.get("vehicleFit") or ""
-        fits = vehicle_fit in ("FITS",)
-        does_not_fit = vehicle_fit in ("NOT_FITS", "DOES_NOT_FIT", "DOESNOTFIT")
+        vehicle_fit = str(fitment.get("vehicleFit") or "").upper()
+        
+        # If we successfully parsed vehicle IDs, rely on fits. 
+        # If vehicle IDs are missing, assume everything is compatible unless explicitly NOT_FITS.
+        has_vehicle = bool(vehicle.get("makeId") and vehicle.get("modelId"))
+        
+        if has_vehicle:
+            fits = vehicle_fit in ("FITS", "FIT")
+            does_not_fit = vehicle_fit in ("NOT_FITS", "DOES_NOT_FIT", "DOESNOTFIT", "NOT_FIT")
+        else:
+            fits = True  # Fallback to allow showing parts if VIN lookup failed
+            does_not_fit = vehicle_fit in ("NOT_FITS", "DOES_NOT_FIT", "DOESNOTFIT", "NOT_FIT")
+
         is_universal = fitment.get("vehicleFitmentLabel") == "UNIVERSAL"
 
         image_url = sku.get("productImageUrl") or ""

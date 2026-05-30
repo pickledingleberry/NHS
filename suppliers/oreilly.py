@@ -260,9 +260,15 @@ def _parse_enterprise_products(data: dict) -> list[dict]:
         image_url = f"https://www.oreillypro.com{img_path}" if img_path else ""
 
         # Fits Vehicle evaluation
-        app_status = item.get("applicationStatus") or ""
-        fits = app_status == "VERIFIED"
-        does_not_fit = app_status in ("NOT_VERIFIED", "DOES_NOT_FIT", "NOT_FITS")
+        app_status = str(item.get("applicationStatus") or "").upper()
+        has_vehicle = bool(vehicle.get("vehicleId") or vehicle.get("id"))
+        
+        if has_vehicle:
+            fits = app_status == "VERIFIED"
+            does_not_fit = app_status in ("NOT_VERIFIED", "DOES_NOT_FIT", "NOT_FITS", "NOT_FIT")
+        else:
+            fits = True
+            does_not_fit = app_status in ("DOES_NOT_FIT", "NOT_FITS", "NOT_FIT")
 
         results.append({
             "brand": brand,
